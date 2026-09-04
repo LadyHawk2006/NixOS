@@ -106,6 +106,7 @@ xdg.portal = {
     android-tools
     scrcpy
     uv
+    localsend
     tangram
     python3
     brightnessctl
