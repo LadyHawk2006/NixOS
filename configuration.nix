@@ -92,6 +92,7 @@ xdg.portal = {
     hyprpolkitagent
     wl-clipboard
     libnotify
+    eza
     qt6.qtwayland
     qt6.qtbase
     vscode
