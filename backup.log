@@ -1,0 +1,20 @@
+2026-09-04 12:48:44 :: Starting NixOS rebuild...
+2026-09-04 12:49:48 :: NixOS rebuild failed! Skipping copy and upload.
+2026-09-04 12:51:12 :: Starting NixOS rebuild...
+2026-09-04 12:52:02 :: Rebuild successful! Syncing changed files to /home/shadrack/.sysbackup...
+2026-09-04 12:52:02 ✗ Failed to sync: /etc/nixos/configuration.nix
+2026-09-04 12:52:02 ✗ Failed to sync: /etc/nixos/hardware-configuration.nix
+2026-09-04 12:52:02 ⚠ Source does not exist: /etc/nixos/flake.nix (skipping)
+2026-09-04 12:52:02 ⚠ Source does not exist: /etc/nixos/flake.lock (skipping)
+2026-09-04 12:52:02 ✗ Failed to sync: ~/.config/mpv/
+2026-09-04 12:52:02 ✗ Failed to sync: ~/.config/hypr/
+2026-09-04 12:52:02 ✗ Failed to sync: ~/.config/fish/
+2026-09-04 12:52:02 :: File sync failed! Skipping Git operations.
+2026-09-04 12:53:05 :: Starting NixOS rebuild...
+2026-09-04 12:53:39 :: Rebuild successful! Syncing changed files to /home/shadrack/.sysbackup...
+2026-09-04 12:53:39 ✓ Synced: /etc/nixos/configuration.nix
+2026-09-04 12:53:39 ✓ Synced: /etc/nixos/hardware-configuration.nix
+2026-09-04 12:53:39 ✓ Synced: ~/.config/mpv/
+2026-09-04 12:53:39 ✓ Synced: ~/.config/hypr/
+2026-09-04 12:53:39 ✓ Synced: ~/.config/fish/
+2026-09-04 12:53:39 :: All file copies successful! Checking for Git updates...
