@@ -106,6 +106,7 @@ xdg.portal = {
     android-tools
     scrcpy
     uv
+    tangram
     python3
     brightnessctl
     ffmpegthumbnailer
