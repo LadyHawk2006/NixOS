@@ -60,6 +60,27 @@ services.udev.extraRules = ''
     KERNEL=="event*", NAME="input/%k", MODE="0666"
   '';
 
+services.keyd = {
+  enable = true;
+  keyboards = {
+    default = {
+      ids = [ "*" ];
+      settings = {
+        main = {
+          f4 = "media";
+          f5 = "playpause";
+          f6 = "previoussong";
+          f7 = "nextsong";
+          f8 = "volumedown";
+          f9 = "volumeup";
+          f10 = "mute";
+        };
+      };
+    };
+  };
+};
+
+
 virtualisation.waydroid.enable = true;
 virtualisation.waydroid.package = pkgs.waydroid-nftables;
 
