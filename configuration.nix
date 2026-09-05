@@ -136,11 +136,16 @@ xdg.portal = {
     brightnessctl
     ffmpegthumbnailer
     playerctl
-    (pkgs.mpv.override {
-    scripts = [ pkgs.mpvScripts.mpris ];
-    })
+  (mpv.override {
+    scripts = with mpvScripts; [
+      mpris
+      sponsorblock
+      quality-menu
+      mpv-playlistmanager   # note: no dash
+    ];
+  })
+];
 
-  ];
 
  environment.sessionVariables = {
    QT_QPA_PLATFORM = "wayland;xcb";
