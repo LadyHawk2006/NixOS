@@ -142,7 +142,9 @@ xdg.portal = {
       sponsorblock
       quality-menu
       mpv-playlistmanager
-      uosc
+      modernx
+      thumbfast
+      
     ];
   })
 ];
