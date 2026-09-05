@@ -1,10 +1,5 @@
 { config, pkgs, ... }:
 
-let
-  # Import the unstable channel
-  unstable = import <nixos-unstable> {};
-in
-
 
 {
   imports =
@@ -97,7 +92,7 @@ xdg.portal = {
   };
 
   programs.dms-shell.enable = true;
-  programs.dms-shell.package = unstable.dms-shell;
+  programs.dms-shell.package = pkgs.dms-shell;
   programs.uwsm.enable = true;
   programs.fish.enable = true;
 
