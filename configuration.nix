@@ -141,7 +141,8 @@ xdg.portal = {
       mpris
       sponsorblock
       quality-menu
-      mpv-playlistmanager   # note: no dash
+      mpv-playlistmanager
+      uosc
     ];
   })
 ];
