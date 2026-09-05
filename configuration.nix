@@ -48,6 +48,21 @@ in
 
 hardware.bluetooth.enable = true;
 hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
+services.actkbd.enable = true;
+services.actkbd.bindings = [
+  # Mute
+  { keys = [ 113 ]; events = [ "key" ];
+    command = "${pkgs.alsa-utils}/bin/amixer -q set Master toggle"; }
+  # Volume down
+  { keys = [ 114 ]; events = [ "key" "rep" ];
+    command = "${pkgs.alsa-utils}/bin/amixer -q set Master 1- unmute"; }
+  # Volume up
+  { keys = [ 115 ]; events = [ "key" "rep" ];
+    command = "${pkgs.alsa-utils}/bin/amixer -q set Master 1+ unmute"; }
+  # Mic Mute
+  { keys = [ 190 ]; events = [ "key" ];
+    command = "${pkgs.alsa-utils}/bin/amixer -q set Capture toggle"; }
+];
 
 
 services.blueman.enable = true;
@@ -98,6 +113,7 @@ xdg.portal = {
     vscode
     kdePackages.kwallet
     kdePackages.dolphin
+    wev
     usbutils
     fastfetch
     gnome-software
