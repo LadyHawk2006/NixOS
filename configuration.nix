@@ -49,6 +49,8 @@ in
 hardware.bluetooth.enable = true;
 hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
 
+
+services.acpid.enable = true;
 services.blueman.enable = true;
 services.upower.enable = true;
 services.printing.enable = true;
@@ -116,6 +118,7 @@ xdg.portal = {
     qt6.qtwayland
     qt6.qtbase
     vscode
+    keyd
     kdePackages.kwallet
     kdePackages.dolphin
     wev
