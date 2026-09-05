@@ -3,9 +3,9 @@
 hl.config({
 	general = {
 		gaps_in = 2,
-		gaps_out = 1,
+		gaps_out = 2,
 		border_size = 1,
-		resize_on_border = true,
+		resize_on_border = false,
 	},
 	decoration = {
 		rounding = 12,
