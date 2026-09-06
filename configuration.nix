@@ -104,7 +104,7 @@
   };
 
   programs.uwsm.enable = true;
-
+  programs.fuse.userAllowOther = true;
   programs.dms-shell.enable = true;
   programs.dms-shell.package = pkgs.dms-shell;
   programs.nix-ld.enable = true;
