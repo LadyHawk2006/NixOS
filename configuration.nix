@@ -1,9 +1,14 @@
+  # ============================================================================
+  #                     NIXOS CONFIGURATION FILE
+  # ============================================================================
+
 { config, pkgs, ... }:
 
 {
   # ============================================================================
   # Imports
   # ============================================================================
+
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
@@ -12,16 +17,18 @@
   # ============================================================================
   # System & Boot
   # ============================================================================
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelModules = [ "xpad" "uinput" ];
 
-  system.stateVersion = "26.05"; # Did you read the comment?
+  system.stateVersion = "26.05";
 
   # ============================================================================
   # Networking & Localization
   # ============================================================================
+
   networking.hostName = "nixos"; # Define your hostname.
   networking.networkmanager.enable = true;
   networking.firewall.trustedInterfaces = [ "waydroid0" ];
@@ -33,6 +40,7 @@
   # ============================================================================
   # User Management & Shell
   # ============================================================================
+
   users.users."shadrack" = {
     isNormalUser = true;
     description = "Shadrack";
@@ -46,12 +54,14 @@
   # ============================================================================
   # Nixpkgs Configuration
   # ============================================================================
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
   # ============================================================================
   # Hardware & Peripheral Configuration
   # ============================================================================
+
   hardware.bluetooth.enable = true;
   hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
 
@@ -144,7 +154,11 @@
   # System Packages
   # ============================================================================
   environment.systemPackages = with pkgs; [
+
+    #---------------------------------------------------------------------------
     # Utilities & CLI Tools
+    #---------------------------------------------------------------------------
+
     vim
     wget
     curl
@@ -167,7 +181,10 @@
     playerctl
     keyd
 
+    #---------------------------------------------------------------------------
     # Terminal & GUI Applications
+    #---------------------------------------------------------------------------
+
     ghostty
     nautilus
     gapless
@@ -179,13 +196,19 @@
     kdePackages.kwallet
     kdePackages.dolphin
     kdePackages.partitionmanager
-
+    
+    #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
+    #---------------------------------------------------------------------------
+
     hyprpolkitagent
     qt6.qtwayland
     qt6.qtbase
-
+    
+    #---------------------------------------------------------------------------
     # Customized Media Players
+    #---------------------------------------------------------------------------
+
     (mpv.override {
       scripts = with mpvScripts; [
         mpris
