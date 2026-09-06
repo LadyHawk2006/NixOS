@@ -107,7 +107,8 @@
 
   programs.dms-shell.enable = true;
   programs.dms-shell.package = pkgs.dms-shell;
-
+  programs.nix-ld.enable = true;
+  
   services.displayManager.dms-greeter = {
     enable = true;
     compositor.name = "hyprland";
