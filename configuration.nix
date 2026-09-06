@@ -126,7 +126,7 @@ xdg.portal = {
     scrcpy
     uv
     localsend
-    tangram
+    navidrome
     python3
     brightnessctl
     ffmpegthumbnailer
