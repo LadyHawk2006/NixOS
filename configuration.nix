@@ -131,6 +131,7 @@ xdg.portal = {
     brightnessctl
     ffmpegthumbnailer
     playerctl
+    # kdePackages.partitionmanager
   (mpv.override {
     scripts = with mpvScripts; [
       mpris
