@@ -33,8 +33,25 @@
   networking.networkmanager.enable = true;
   networking.firewall.trustedInterfaces = [ "waydroid0" ];
 
-  time.timeZone = "Africa/Nairobi";
 
+  networking.firewall = {
+    enable = true;
+    
+    allowedTCPPorts = [ 
+      53317 # LocalSend
+      5555  # Default ADB Wireless
+    ];
+    
+    allowedUDPPorts = [ 
+      53317 # LocalSend
+    ];
+
+    allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
+  };
+
+
+
+  time.timeZone = "Africa/Nairobi";
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ============================================================================
@@ -44,7 +61,7 @@
   users.users."shadrack" = {
     isNormalUser = true;
     description = "Shadrack";
-    extraGroups = [ "networkmanager" "wheel" "input" ];
+    extraGroups = [ "networkmanager" "wheel" "input" "adbusers" ];
     packages = with pkgs; [];
     shell = pkgs.fish;
   };

@@ -17,7 +17,7 @@ hl.window_rule({ match = { class = ".*mpv.*" }, float = true, no_shadow = true, 
 hl.window_rule({ match = { class = "^GLava$" }, no_blur = true })
 
 -- DMS-RULE: id=wr_1785244135333411555, name=com.mitchellh.ghostty
-hl.window_rule({ match = { class = "^com.mitchellh.ghostty$" }, float = true, opacity = 0.8, size = { 1100, 700 } })
+hl.window_rule({ match = { class = "^com.mitchellh.ghostty$" }, float = true, opacity = 0.8, size = { 1100, 700 }, move = { 400, 121 } })
 
 -- DMS-RULE: id=wr_1785244255109347777, name=org.gnome.Nautilus
 hl.window_rule({ match = { class = "^org.gnome.Nautilus$" }, opacity = 0.85 })
@@ -66,3 +66,6 @@ hl.window_rule({ match = { class = "^com.github.th-ch.youtube-music$" }, float =
 
 -- DMS-RULE: id=wr_1788170050830846114, name=scrcpy
 hl.window_rule({ match = { class = "^scrcpy$" }, float = true, opaque = true, size = { 458, 1027 }, move = { 1459, 48 } })
+
+-- DMS-RULE: id=wr_1788782524630685169, name=com.dec05eba.gpu_screen_recorder
+hl.window_rule({ match = { class = "^com.dec05eba.gpu_screen_recorder$" }, float = true, opacity = 0.85, size = { 682, 596 }, move = { 1126, 120 } })
