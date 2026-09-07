@@ -65,6 +65,7 @@
   hardware.bluetooth.enable = true;
   hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
 
+ 
   services.xserver.xkb = {
     layout = "us";
     variant = "";
@@ -108,6 +109,7 @@
   programs.dms-shell.enable = true;
   programs.dms-shell.package = pkgs.dms-shell;
   programs.nix-ld.enable = true;
+  programs.dconf.enable = true;
 
   services.displayManager.dms-greeter = {
     enable = true;
@@ -198,6 +200,7 @@
     kdePackages.kwallet
     kdePackages.dolphin
     kdePackages.partitionmanager
+    easyeffects
     
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
