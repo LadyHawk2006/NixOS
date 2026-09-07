@@ -201,6 +201,7 @@
     kdePackages.dolphin
     kdePackages.partitionmanager
     easyeffects
+    bat
     
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
