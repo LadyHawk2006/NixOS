@@ -202,7 +202,7 @@
     kdePackages.partitionmanager
     easyeffects
     bat
-    gpu-screen-recorder
+    gpu-screen-recorder-gtk
     
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
