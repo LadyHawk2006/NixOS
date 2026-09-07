@@ -202,6 +202,7 @@
     kdePackages.partitionmanager
     easyeffects
     bat
+    kooha
     
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
