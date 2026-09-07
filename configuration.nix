@@ -202,7 +202,7 @@
     kdePackages.partitionmanager
     easyeffects
     bat
-    kooha
+    gpu-screen-recorder
     
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
