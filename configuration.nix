@@ -64,8 +64,15 @@
 
   hardware.bluetooth.enable = true;
   hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
+  hardware.graphics = {
+  enable = true;
+  extraPackages = with pkgs; [
+    intel-media-driver  # For Broadwell (2014) and newer CPUs (uses iHD driver)
+    intel-vaapi-driver  # Fallback for older i965 drivers
+    libvdpau-va-gl
+  ];
+};
 
- 
   services.xserver.xkb = {
     layout = "us";
     variant = "";
@@ -110,6 +117,7 @@
   programs.dms-shell.package = pkgs.dms-shell;
   programs.nix-ld.enable = true;
   programs.dconf.enable = true;
+  programs.gpu-screen-recorder.enable = true;
 
   services.displayManager.dms-greeter = {
     enable = true;
@@ -124,6 +132,7 @@
   environment.sessionVariables = {
     QT_QPA_PLATFORM = "wayland;xcb";
     NIXOS_OZONE_WL = "1";
+    LIBVA_DRIVER_NAME = "iHD";
   };
 
   # ============================================================================
