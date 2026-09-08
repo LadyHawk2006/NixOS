@@ -221,6 +221,8 @@
     amberol
     google-chrome
     brave-origin
+    caddy
+    nodejs
     vscode
     gnome-software
     glava
