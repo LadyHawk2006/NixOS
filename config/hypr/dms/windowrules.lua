@@ -69,3 +69,6 @@ hl.window_rule({ match = { class = "^scrcpy$" }, float = true, opaque = true, si
 
 -- DMS-RULE: id=wr_1788782524630685169, name=com.dec05eba.gpu_screen_recorder
 hl.window_rule({ match = { class = "^com.dec05eba.gpu_screen_recorder$" }, float = true, opacity = 0.85, size = { 682, 596 }, move = { 1126, 120 } })
+
+-- DMS-RULE: id=wr_1788787894830806569, name=.scrcpy-wrapped
+hl.window_rule({ match = { class = "^.scrcpy-wrapped$" }, float = true, size = { 439, 983 }, move = { 27, 70 } })

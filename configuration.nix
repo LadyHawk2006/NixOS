@@ -220,6 +220,7 @@
     gapless
     amberol
     google-chrome
+    brave-origin
     vscode
     gnome-software
     glava
