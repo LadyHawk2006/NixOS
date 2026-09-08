@@ -63,7 +63,7 @@
   users.users."shadrack" = {
     isNormalUser = true;
     description = "Shadrack";
-    extraGroups = [ "networkmanager" "wheel" "input" "adbusers" ];
+    extraGroups = [ "networkmanager" "wheel" "input" "adbusers" "minidlna" ];
     packages = with pkgs; [];
     shell = pkgs.fish;
   };
