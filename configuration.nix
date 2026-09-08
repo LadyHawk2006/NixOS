@@ -124,36 +124,24 @@
 
   services.openssh.enable = true;
 
-  services.minidlna = {
+  services.samba = {
   enable = true;
-  openFirewall = true;
+  openFirewall = true; # Automatically opens required SMB ports
   settings = {
-    media_dir = [ "V,/home/shadrack/Videos" ];
-    friendly_name = "NixOS Media";
-    inotify = "yes"; 
+    global = {
+      "workgroup" = "WORKGROUP";
+      "server string" = "NixOS Media";
+      "netbios name" = "nixos";
+      "security" = "user";
+    };
+    "Videos" = {
+      "path" = "/home/shadrack/Videos";
+      "browseable" = "yes";
+      "read only" = "yes";
+      "guest ok" = "no";
+    };
   };
- };
-
-systemd.services.minidlna.serviceConfig.ProtectHome = "read-only";
-
-#  services.samba = {
-#  enable = true;
-#  openFirewall = true; # Automatically opens required SMB ports
-#  settings = {
-#    global = {
-#      "workgroup" = "WORKGROUP";
-#      "server string" = "NixOS Media";
-#      "netbios name" = "nixos";
-#      "security" = "user";
-#    };
-#    "Videos" = {
-#      "path" = "/home/shadrack/Videos";
-#      "browseable" = "yes";
-#      "read only" = "yes";
-#      "guest ok" = "no";
-#    };
-#  };
-#};
+};
 
   # ============================================================================
   # Desktop Environment & Display Services
