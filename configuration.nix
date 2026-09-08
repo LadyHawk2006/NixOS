@@ -130,8 +130,11 @@
   settings = {
     media_dir = [ "V,/home/shadrack/Videos" ];
     friendly_name = "NixOS Media";
+    inotify = "yes"; 
   };
  };
+
+systemd.services.minidlna.serviceConfig.ProtectHome = "read-only";
 
 #  services.samba = {
 #  enable = true;
