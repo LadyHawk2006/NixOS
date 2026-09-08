@@ -245,6 +245,10 @@ systemd.services.minidlna.serviceConfig.ProtectHome = "read-only";
     ffmpegthumbnailer
     playerctl
     keyd
+    minidlna
+    caddy
+    nodejs
+    bat
 
     #---------------------------------------------------------------------------
     # Terminal & GUI Applications
@@ -256,8 +260,6 @@ systemd.services.minidlna.serviceConfig.ProtectHome = "read-only";
     amberol
     google-chrome
     brave-origin
-    caddy
-    nodejs
     vscode
     gnome-software
     glava
@@ -265,7 +267,7 @@ systemd.services.minidlna.serviceConfig.ProtectHome = "read-only";
     kdePackages.dolphin
     kdePackages.partitionmanager
     easyeffects
-    bat
+    
     gpu-screen-recorder-gtk
     
     #---------------------------------------------------------------------------
