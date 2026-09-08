@@ -41,15 +41,11 @@
       53317 # LocalSend
       5555  # Default ADB Wireless
       8080
-      22
-      21  
     ];
     
     allowedUDPPorts = [ 
       53317
-      8080
-      21
-      22 # LocalSend
+      8080 # LocalSend
     ];
 
     allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
@@ -127,6 +123,25 @@
   };
 
   services.openssh.enable = true;
+
+  services.samba = {
+  enable = true;
+  openFirewall = true; # Automatically opens required SMB ports
+  settings = {
+    global = {
+      "workgroup" = "WORKGROUP";
+      "server string" = "NixOS Media";
+      "netbios name" = "nixos";
+      "security" = "user";
+    };
+    "Videos" = {
+      "path" = "/home/shadrack/Videos";
+      "browseable" = "yes";
+      "read only" = "yes";
+      "guest ok" = "no";
+    };
+  };
+};
 
   # ============================================================================
   # Desktop Environment & Display Services
