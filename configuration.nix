@@ -40,12 +40,16 @@
     allowedTCPPorts = [ 
       53317 # LocalSend
       5555  # Default ADB Wireless
-      8080  
+      8080
+      22
+      21  
     ];
     
     allowedUDPPorts = [ 
       53317
-      8080 # LocalSend
+      8080
+      21
+      22 # LocalSend
     ];
 
     allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
