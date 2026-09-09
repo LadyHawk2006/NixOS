@@ -225,7 +225,6 @@
     android-tools
     scrcpy
     uv
-    localsend
     ffmpeg
     python3
     brightnessctl
@@ -251,14 +250,16 @@
     vscode
     gnome-software
     glava
+    gdu
     kdePackages.kwallet
     kdePackages.dolphin
     kdePackages.partitionmanager
     easyeffects
     gpu-screen-recorder-gtk
     losslesscut-bin
+    localsend
 
-    
+
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
     #---------------------------------------------------------------------------
