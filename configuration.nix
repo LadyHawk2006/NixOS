@@ -265,7 +265,9 @@
     qt6.qtwayland
     qt6.qtbase
     adwaita-icon-theme
-    font-awesome
+    candy-icons
+    sweet-folders
+    breeze-hacked-cursor-theme
 
     #---------------------------------------------------------------------------
     # Customized Media Players
