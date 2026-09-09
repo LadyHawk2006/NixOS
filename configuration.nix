@@ -256,6 +256,8 @@
     kdePackages.partitionmanager
     easyeffects
     gpu-screen-recorder-gtk
+    losslesscut-bin
+
     
     #---------------------------------------------------------------------------
     # Desktop Environment Components & Libraries
