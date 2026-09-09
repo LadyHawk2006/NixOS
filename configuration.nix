@@ -141,7 +141,7 @@
       "guest ok" = "no";
     };
   };
-};
+ };
 
   # ============================================================================
   # Desktop Environment & Display Services
@@ -255,7 +255,6 @@
     kdePackages.dolphin
     kdePackages.partitionmanager
     easyeffects
-    
     gpu-screen-recorder-gtk
     
     #---------------------------------------------------------------------------
@@ -265,7 +264,9 @@
     hyprpolkitagent
     qt6.qtwayland
     qt6.qtbase
-    
+    adwaita-icon-theme
+    font-awesome
+
     #---------------------------------------------------------------------------
     # Customized Media Players
     #---------------------------------------------------------------------------

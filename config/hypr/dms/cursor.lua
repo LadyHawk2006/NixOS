@@ -2,3 +2,10 @@
 
 hl.env("HYPRCURSOR_SIZE", "20")
 hl.env("XCURSOR_SIZE", "20")
+
+hl.config({
+	cursor = {
+		hide_on_key_press = true,
+		inactive_timeout = 4,
+	},
+})
