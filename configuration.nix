@@ -58,7 +58,7 @@
 
   networking.hostName = "nixos"; # Define your hostname.
   networking.networkmanager.enable = true;
-  networking.firewall.trustedInterfaces = [ "waydroid0" ];
+  networking.firewall.trustedInterfaces = [ "waydroid0" "tailscale0" ];
 
   networking.firewall = {
     enable = true;
@@ -71,6 +71,7 @@
     allowedUDPPorts = [
       53317
       8080
+      41641
     ];
 
     allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
@@ -139,6 +140,7 @@
   };
 
   services.openssh.enable = true;
+  services.tailscale.enable = true;
 
   services.samba = {
     enable = true;
