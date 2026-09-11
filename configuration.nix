@@ -1,8 +1,8 @@
-  # ============================================================================
+# ============================================================================
   #                     NIXOS CONFIGURATION FILE
   # ============================================================================
 
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   # ============================================================================
@@ -15,17 +15,42 @@
   ];
 
   # ============================================================================
+  # Nixpkgs Configuration
+  # ============================================================================
+
+  # Allow unfree packages
+  nixpkgs.config.allowUnfree = true;
+
+  # Apply the CachyOS kernel overlay so pkgs.cachyosKernels exists
+  nixpkgs.overlays = [
+    inputs.nix-cachyos-kernel.overlays.default
+  ];
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings = {
+  substituters = [
+    "https://cache.nixos.org"
+    "https://attic.xuyh0120.win/lantian"
+  ];
+  trusted-public-keys = [
+    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+    "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
+  ];
+  
+  
+  };
+  # ============================================================================
   # System & Boot
   # ============================================================================
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+# boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
   boot.kernelModules = [ "xpad" "uinput" ];
 
   system.stateVersion = "26.05";
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   # ============================================================================
   # Networking & Localization
@@ -35,24 +60,21 @@
   networking.networkmanager.enable = true;
   networking.firewall.trustedInterfaces = [ "waydroid0" ];
 
-
   networking.firewall = {
     enable = true;
-    
-    allowedTCPPorts = [ 
-      53317 
+
+    allowedTCPPorts = [
+      53317
       8080
     ];
-    
-    allowedUDPPorts = [ 
+
+    allowedUDPPorts = [
       53317
-      8080 
+      8080
     ];
 
     allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
   };
-
-
 
   time.timeZone = "Africa/Nairobi";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -72,26 +94,19 @@
   programs.fish.enable = true;
 
   # ============================================================================
-  # Nixpkgs Configuration
-  # ============================================================================
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
-
-  # ============================================================================
   # Hardware & Peripheral Configuration
   # ============================================================================
 
   hardware.bluetooth.enable = true;
   hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
   hardware.graphics = {
-  enable = true;
-  extraPackages = with pkgs; [
-    intel-media-driver  # For Broadwell (2014) and newer CPUs (uses iHD driver)
-    intel-vaapi-driver  # Fallback for older i965 drivers
-    libvdpau-va-gl
-  ];
-};
+    enable = true;
+    extraPackages = with pkgs; [
+      intel-media-driver  # For Broadwell (2014) and newer CPUs (uses iHD driver)
+      intel-vaapi-driver  # Fallback for older i965 drivers
+      libvdpau-va-gl
+    ];
+  };
 
   services.xserver.xkb = {
     layout = "us";
@@ -126,30 +141,30 @@
   services.openssh.enable = true;
 
   services.samba = {
-  enable = true;
-  openFirewall = true; # Automatically opens required SMB ports
-  settings = {
-    global = {
-      "workgroup" = "WORKGROUP";
-      "server string" = "NixOS Media";
-      "netbios name" = "nixos";
-      "security" = "user";
-    };
-    "Videos" = {
-      "path" = "/home/shadrack/Videos";
-      "browseable" = "yes";
-      "read only" = "yes";
-      "guest ok" = "no";
-    };
+    enable = true;
+    openFirewall = true; # Automatically opens required SMB ports
+    settings = {
+      global = {
+        "workgroup" = "WORKGROUP";
+        "server string" = "NixOS Media";
+        "netbios name" = "nixos";
+        "security" = "user";
+      };
+      "Videos" = {
+        "path" = "/home/shadrack/Videos";
+        "browseable" = "yes";
+        "read only" = "yes";
+        "guest ok" = "no";
+      };
 
-    "Music" = {
-      "path" = "/home/shadrack/Music";
-      "browseable" = "yes";
-      "read only" = "yes";
-      "guest ok" = "no";
+      "Music" = {
+        "path" = "/home/shadrack/Music";
+        "browseable" = "yes";
+        "read only" = "yes";
+        "guest ok" = "no";
+      };
     };
   };
- };
 
   # ============================================================================
   # Desktop Environment & Display Services

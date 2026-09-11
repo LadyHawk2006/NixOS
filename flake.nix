@@ -3,8 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # If you want to stay on a stable release instead, use:
-    # nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel";
   };
 
   outputs = { self, nixpkgs, ... }@inputs: {

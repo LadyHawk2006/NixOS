@@ -1,0 +1,128 @@
+#!/usr/bin/env fish
+
+set BACKUP_DIR "$HOME/.sysbackup"
+set LOG_FILE "$BACKUP_DIR/backup.log"
+
+# Set to 1 to run 'nix flake update' before each rebuild (slower, fetches latest inputs).
+# Set to 0 to just rebuild using the existing flake.lock (faster, reproducible).
+set UPDATE_FLAKE 1
+
+set FLAKE_REF "/etc/nixos#"
+
+# Function for logging
+function log_message -a message
+    echo (date "+%Y-%m-%d %H:%M:%S") "$message" | tee -a $LOG_FILE
+end
+
+log_message ":: Starting NixOS rebuild..."
+
+# Optionally update flake inputs first
+if test $UPDATE_FLAKE -eq 1
+    log_message ":: Updating flake inputs..."
+    if sudo nix flake update --flake $FLAKE_REF
+        log_message ":: Flake inputs updated."
+    else
+        log_message ":: Flake update failed! Aborting."
+        exit 1
+    end
+end
+
+# Rebuild using the flake
+if sudo nixos-rebuild switch --flake $FLAKE_REF
+    log_message ":: Rebuild successful! Syncing changed files to $BACKUP_DIR..."
+
+    # Ensure destination directories exist
+    mkdir -p $BACKUP_DIR/config
+    mkdir -p $BACKUP_DIR/local/bin
+
+    # Rsync options as separate arguments
+    set RSYNC_OPTS -a -u --delete --stats
+
+    # Create an array of sync operations
+    set sync_operations \
+        "/etc/nixos/configuration.nix $BACKUP_DIR/" \
+        "/etc/nixos/hardware-configuration.nix $BACKUP_DIR/"
+
+    # Check if flake files exist and add them
+    if test -f "/etc/nixos/flake.nix"
+        set sync_operations $sync_operations "/etc/nixos/flake.nix $BACKUP_DIR/"
+    end
+    if test -f "/etc/nixos/flake.lock"
+        set sync_operations $sync_operations "/etc/nixos/flake.lock $BACKUP_DIR/"
+    end
+
+    # Add config directories
+    set sync_operations $sync_operations \
+        "~/.config/mpv/ $BACKUP_DIR/config/mpv/" \
+        "~/.config/hypr/ $BACKUP_DIR/config/hypr/" \
+        "~/.config/fish/ $BACKUP_DIR/config/fish/" \
+        "~/.local/bin/ $BACKUP_DIR/local/bin/"
+
+    set sync_failed 0
+
+    for operation in $sync_operations
+        set source (echo $operation | cut -d' ' -f1)
+        set dest (echo $operation | cut -d' ' -f2)
+        set expanded_source (eval echo $source)
+
+        if test -e $expanded_source
+            if rsync $RSYNC_OPTS $expanded_source $dest
+                log_message "✓ Synced: $source"
+            else
+                log_message "✗ Failed to sync: $source"
+                set sync_failed 1
+            end
+        else
+            log_message "⚠ Source does not exist: $source (skipping)"
+        end
+    end
+
+    if test $sync_failed -eq 0
+        log_message ":: All file copies successful! Checking for Git updates..."
+
+        set current_dir (pwd)
+        cd $BACKUP_DIR
+
+        if git add .
+            set changes_count (git diff --staged --numstat | wc -l)
+
+            if test $changes_count -gt 0
+                set current_date (date "+%Y-%m-%d %H:%M:%S")
+
+                set current_hostname (hostname)
+                set nixos_version (nixos-version)
+
+                if git commit -m "backup: post-rebuild sync ($current_date)
+Host: $current_hostname
+NixOS: $nixos_version
+Files changed: $changes_count"
+                    log_message ":: Git commit successful. Pushing to remote..."
+
+                    if git push origin main
+                        log_message ":: Backup successfully pushed to remote repository."
+                    else
+                        log_message ":: Git push failed! Check your network and authentication."
+                    end
+                else
+                    log_message ":: Git commit failed!"
+                    exit 1
+                end
+            else
+                log_message ":: No configuration changes detected. Skipping Git operations."
+            end
+        else
+            log_message ":: Git add failed!"
+            exit 1
+        end
+
+        cd $current_dir
+    else
+        log_message ":: File sync failed! Skipping Git operations."
+        exit 1
+    end
+else
+    log_message ":: NixOS rebuild failed! Skipping copy and upload."
+    exit 1
+end
+
+log_message ":: Backup process completed successfully!"
