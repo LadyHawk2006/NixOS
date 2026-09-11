@@ -38,14 +38,13 @@
     enable = true;
     
     allowedTCPPorts = [ 
-      53317 # LocalSend
-      5555  # Default ADB Wireless
+      53317 
       8080
     ];
     
     allowedUDPPorts = [ 
       53317
-      8080 # LocalSend
+      8080 
     ];
 
     allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
@@ -136,6 +135,13 @@
     };
     "Videos" = {
       "path" = "/home/shadrack/Videos";
+      "browseable" = "yes";
+      "read only" = "yes";
+      "guest ok" = "no";
+    };
+
+    "Music" = {
+      "path" = "/home/shadrack/Music";
       "browseable" = "yes";
       "read only" = "yes";
       "guest ok" = "no";
