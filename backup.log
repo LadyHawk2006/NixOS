@@ -763,3 +763,19 @@
 2026-09-11 14:13:12 ✓ Synced: ~/.config/fish/
 2026-09-11 14:13:12 ✓ Synced: ~/.local/bin/
 2026-09-11 14:13:12 :: All file copies successful! Checking for Git updates...
+2026-09-11 14:13:12 :: Git commit successful. Pushing to remote...
+2026-09-11 14:13:18 :: Backup successfully pushed to remote repository.
+2026-09-11 14:13:18 :: Backup process completed successfully!
+2026-09-11 14:17:10 :: Starting NixOS rebuild...
+2026-09-11 14:17:10 :: Updating flake inputs...
+2026-09-11 14:17:12 :: Flake inputs updated.
+2026-09-11 14:17:19 :: Rebuild successful! Syncing changed files to /home/shadrack/.sysbackup...
+2026-09-11 14:17:20 ✓ Synced: /etc/nixos/configuration.nix
+2026-09-11 14:17:20 ✓ Synced: /etc/nixos/hardware-configuration.nix
+2026-09-11 14:17:20 ✓ Synced: /etc/nixos/flake.nix
+2026-09-11 14:17:20 ✓ Synced: /etc/nixos/flake.lock
+2026-09-11 14:17:20 ✓ Synced: ~/.config/mpv/
+2026-09-11 14:17:20 ✓ Synced: ~/.config/hypr/
+2026-09-11 14:17:20 ✓ Synced: ~/.config/fish/
+2026-09-11 14:17:20 ✓ Synced: ~/.local/bin/
+2026-09-11 14:17:20 :: All file copies successful! Checking for Git updates...
