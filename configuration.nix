@@ -48,6 +48,10 @@
 # boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
   boot.kernelModules = [ "xpad" "uinput" ];
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+  };
 
   system.stateVersion = "26.05";
 
