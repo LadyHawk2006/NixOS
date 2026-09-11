@@ -261,7 +261,6 @@
     ffmpegthumbnailer
     playerctl
     keyd
-    minidlna
     caddy
     nodejs
     bat
