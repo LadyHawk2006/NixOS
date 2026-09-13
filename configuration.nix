@@ -2,7 +2,7 @@
   #                     NIXOS CONFIGURATION FILE
   # ============================================================================
 
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, ... }:
 
 {
   # ============================================================================
@@ -18,35 +18,31 @@
   # Nixpkgs Configuration
   # ============================================================================
 
-  # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
-  # Apply the CachyOS kernel overlay so pkgs.cachyosKernels exists
-  nixpkgs.overlays = [
-    inputs.nix-cachyos-kernel.overlays.default
-  ];
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nix.settings = {
-  substituters = [
-    "https://cache.nixos.org"
-    "https://attic.xuyh0120.win/lantian"
-  ];
-  trusted-public-keys = [
-    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
-  ];
-  
-  
-  };
   # ============================================================================
   # System & Boot
   # ============================================================================
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-# boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
+  boot.loader = {
+      systemd-boot.enable = false;
+        grub = {
+        enable = true;
+        efiSupport = true;
+        device = "nodev";
+        # useOSProber = true; # (Optional) Uncomment if dual-booting with Windows/other OS
+
+        theme = pkgs.nixos-grub2-theme;
+      };
+
+      efi = {
+        canTouchEfiVariables = true;
+        efiSysMountPoint = "/boot";
+      };
+    };
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+# boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
   boot.kernelModules = [ "xpad" "uinput" ];
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
@@ -78,7 +74,14 @@
       41641
     ];
 
-    allowedTCPPortRanges = [ { from = 30000; to = 50000; } ];
+    allowedTCPPortRanges = [
+      { from = 30000; to = 50000; }
+      { from = 1714; to = 1764; }
+    ];
+
+    allowedUDPPortRanges = [
+      { from = 1714; to = 1764; }
+    ];
   };
 
   time.timeZone = "Africa/Nairobi";
@@ -191,6 +194,7 @@
   services.displayManager.dms-greeter = {
     enable = true;
     compositor.name = "hyprland";
+    configHome = "/home/shadrack";
   };
 
   xdg.portal = {
@@ -264,6 +268,7 @@
     caddy
     nodejs
     bat
+    wineWow64Packages.wayland
 
     #---------------------------------------------------------------------------
     # Terminal & GUI Applications
@@ -275,7 +280,8 @@
     amberol
     google-chrome
     brave-origin
-    vscode
+#   vscode
+    zed-editor
     gnome-software
     glava
     gdu
@@ -286,6 +292,7 @@
     gpu-screen-recorder-gtk
     losslesscut-bin
     localsend
+    valent
 
 
     #---------------------------------------------------------------------------

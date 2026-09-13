@@ -72,3 +72,6 @@ hl.window_rule({ match = { class = "^com.dec05eba.gpu_screen_recorder$" }, float
 
 -- DMS-RULE: id=wr_1788787894830806569, name=.scrcpy-wrapped
 hl.window_rule({ match = { class = "^.scrcpy-wrapped$" }, float = true, size = { 439, 983 }, move = { 27, 70 } })
+
+-- DMS-RULE: id=dms-floating-windows, name=DMS Floating Windows
+hl.window_rule({ match = { class = "^com.danklinux.dms$" }, float = true })

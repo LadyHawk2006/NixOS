@@ -8,10 +8,20 @@ function log_message -a message
     echo (date "+%Y-%m-%d %H:%M:%S") "$message" | tee -a $LOG_FILE
 end
 
-log_message ":: Starting NixOS rebuild..."
+log_message ":: Starting NixOS update & upgrade..."
+
+# Update nix channels
+log_message ":: Updating nix channels..."
+if sudo nix-channel --update
+    log_message ":: Nix channels updated."
+else
+    log_message ":: Channel update failed! Aborting."
+    exit 1
+end
 
 # Rebuild using the system configuration
-if sudo nixos-rebuild switch
+log_message ":: Rebuilding system..."
+if sudo nixos-rebuild switch --upgrade
     log_message ":: Rebuild successful! Syncing changed files to $BACKUP_DIR..."
 
     # Ensure destination directories exist
@@ -67,7 +77,7 @@ if sudo nixos-rebuild switch
                 set current_hostname (hostname)
                 set nixos_version (nixos-version)
 
-                if git commit -m "backup: post-rebuild sync ($current_date)
+                if git commit -m "backup: post-upgrade sync ($current_date)
 Host: $current_hostname
 NixOS: $nixos_version
 Files changed: $changes_count"
@@ -100,4 +110,4 @@ else
     exit 1
 end
 
-log_message ":: Backup process completed successfully!"
+log_message ":: Update & upgrade process completed successfully!"
