@@ -258,7 +258,7 @@
     android-tools
     scrcpy
     uv
-    ffmpeg
+#   ffmpeg
     python3
     brightnessctl
     steam-run
