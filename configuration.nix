@@ -294,6 +294,9 @@
     localsend
     valent
     kdePackages.kdenlive
+    spotify
+    kdePackages.gwenview
+    ocamlPackages.gstreamer
 
 
     #---------------------------------------------------------------------------

@@ -49,9 +49,6 @@ hl.window_rule({ match = { class = "^space.f1nn.chorus$" }, float = true, opaque
 -- DMS-RULE: id=wr_1786859113261185127, name=chrome-chat.deepseek.com__-Default
 hl.window_rule({ match = { class = "^chrome-chat.deepseek.com__-Default$" }, float = true, opacity = 0.9, size = { 503, 836 }, move = { 1370, 93 } })
 
--- DMS-RULE: id=wr_1786978108865856895, name=org.kde.kdenlive
-hl.window_rule({ match = { class = "^org.kde.kdenlive$" }, float = true, size = { 800, 800 } })
-
 -- DMS-RULE: id=wr_1786984405863155935, name=chrome-music.youtube.com__-Default
 hl.window_rule({ match = { class = "^chrome-music.youtube.com__-Default$" }, opaque = true, size = { 800, 600 } })
 
