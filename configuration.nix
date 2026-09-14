@@ -258,7 +258,7 @@
     android-tools
     scrcpy
     uv
-#   ffmpeg
+    ffmpeg-full
     python3
     brightnessctl
     steam-run
@@ -269,7 +269,6 @@
     nodejs
     bat
     wineWow64Packages.wayland
-    (pkgs.ffmpeg.override { ffmpegVariant = "full"; })
 
     #---------------------------------------------------------------------------
     # Terminal & GUI Applications
