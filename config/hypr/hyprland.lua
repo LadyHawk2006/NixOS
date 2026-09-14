@@ -25,7 +25,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("dbus-update-activation-environment --systemd --all")
     hl.exec_cmd("systemctl --user start hyprland-session.target")
     hl.exec_cmd("qs -c overview")
-    hl.exec_cmd("hyprctl setcursor Adwaita 24")
+--  hl.exec_cmd("hyprctl setcursor Adwaita 24")
 
 end)
 
@@ -54,8 +54,8 @@ hl.config({
 hl.config({
     decoration = {
         rounding = 12,
-        active_opacity = 1.0,
-        inactive_opacity = 0.85,
+        active_opacity = 0.98,
+        inactive_opacity = 0.80,
         shadow = {
             enabled = true,
             range = 30,

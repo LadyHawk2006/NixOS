@@ -30,7 +30,7 @@ hl.bind("ALT + M", hl.dsp.exec_cmd("playerctl play-pause"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd("google-chrome-stable"))
 hl.bind("SUPER + T", hl.dsp.exec_cmd("ghostty"))
 hl.bind("SUPER + C", hl.dsp.exec_cmd("g4music"))
-hl.bind("ALT + Z", hl.dsp.exec_cmd("code"))
+hl.bind("ALT + Z", hl.dsp.exec_cmd("zeditor --classic"))
 hl.bind("ALT + C", hl.dsp.exec_cmd("/home/shadrack/.local/bin/chorus"))
 --hl.bind("CTRL + End", hl.dsp.exec_cmd("nixedit"))
 
