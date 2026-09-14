@@ -293,6 +293,7 @@
     losslesscut-bin
     localsend
     valent
+    kdePackages.kdenlive
 
 
     #---------------------------------------------------------------------------
