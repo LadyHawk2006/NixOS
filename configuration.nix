@@ -208,6 +208,13 @@
     LIBVA_DRIVER_NAME = "iHD";
   };
 
+
+  qt = {
+    enable = true;
+    platformTheme = "qt5ct";
+  };
+
+
   # ============================================================================
   # System Services & Daemons
   # ============================================================================
@@ -310,6 +317,8 @@
     candy-icons
     sweet-folders
     breeze-hacked-cursor-theme
+    libsForQt5.qt5ct
+    qt6Packages.qt6ct
 
     #---------------------------------------------------------------------------
     # Customized Media Players

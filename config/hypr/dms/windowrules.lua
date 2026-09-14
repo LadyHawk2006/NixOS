@@ -4,9 +4,6 @@
 -- DMS-RULE: id=dms_rule_0, name=.*xdg-desktop-portal-gtk.*
 hl.window_rule({ match = { class = ".*xdg-desktop-portal-gtk.*" }, float = true, size = { 988, 822 }, move = { 810, 124 } })
 
--- DMS-RULE: id=dms_rule_2, name=.*Spotify.*
-hl.window_rule({ match = { class = ".*Spotify.*" }, float = true, no_blur = true })
-
 -- DMS-RULE: id=dms_rule_3, name=
 hl.window_rule({ match = { class = ".*chrome-www.instagram.com__-Default.*" }, float = true })
 
@@ -72,3 +69,6 @@ hl.window_rule({ match = { class = "^.scrcpy-wrapped$" }, float = true, size = {
 
 -- DMS-RULE: id=dms-floating-windows, name=DMS Floating Windows
 hl.window_rule({ match = { class = "^com.danklinux.dms$" }, float = true })
+
+-- DMS-RULE: id=wr_1789385011797467517, name=spotify
+hl.window_rule({ match = { class = "^spotify$" }, float = true, opacity = 0.75, size = { 800, 683 }, move = { 69, 92 } })

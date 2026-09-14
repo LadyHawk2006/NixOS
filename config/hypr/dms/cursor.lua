@@ -2,8 +2,8 @@
 
 hl.env("HYPRCURSOR_THEME", "Breeze_Hacked")
 hl.env("XCURSOR_THEME", "Breeze_Hacked")
-hl.env("HYPRCURSOR_SIZE", "24")
-hl.env("XCURSOR_SIZE", "24")
+hl.env("HYPRCURSOR_SIZE", "28")
+hl.env("XCURSOR_SIZE", "28")
 
 hl.config({
 	cursor = {
