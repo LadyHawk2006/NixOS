@@ -269,6 +269,7 @@
     nodejs
     bat
     wineWow64Packages.wayland
+    (pkgs.ffmpeg.override { ffmpegVariant = "full"; })
 
     #---------------------------------------------------------------------------
     # Terminal & GUI Applications
