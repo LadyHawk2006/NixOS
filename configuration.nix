@@ -319,6 +319,8 @@
     breeze-hacked-cursor-theme
     libsForQt5.qt5ct
     qt6Packages.qt6ct
+    qtengine
+
 
     #---------------------------------------------------------------------------
     # Customized Media Players
