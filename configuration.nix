@@ -317,8 +317,8 @@
         mpris
         sponsorblock
         quality-menu
-#       mpv-playlistmanager
-        modernz
+        mpv-playlistmanager
+#       modernz
         thumbfast
       ];
     })
