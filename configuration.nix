@@ -307,6 +307,8 @@
     spotify
     kdePackages.gwenview
     ocamlPackages.gstreamer
+    bazaar
+    nil
 
 
     #---------------------------------------------------------------------------
