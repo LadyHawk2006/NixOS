@@ -92,8 +92,8 @@ hl.bind("SUPER + CTRL + mouse_up", hl.dsp.window.move({ workspace = "e-1" }))
 hl.bind("SUPER + CTRL + down", hl.dsp.window.move({ workspace = "e+1" }))
 --hl.bind("F2", hl.dsp.focus({ workspace = "e+1" }))
 --hl.bind("F2", hl.dsp.exec_cmd("playerctl play-pause"))
-hl.bind("Home", hl.dsp.window.close())
-hl.bind("Home", hl.dsp.focus({ workspace = "e+1" }))
+--hl.bind("Home", hl.dsp.window.close())
+--hl.bind("Home", hl.dsp.focus({ workspace = "e+1" }))
 
 -- Global Window Focus Traversal
 hl.bind("SUPER + J", hl.dsp.focus({ direction = "down" }))

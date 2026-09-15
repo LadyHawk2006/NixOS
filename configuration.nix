@@ -292,7 +292,7 @@
     brave-origin
 #   vscode
     zed-editor
-    gnome-software
+#   gnome-software
     glava
     gdu
     kdePackages.kwallet
