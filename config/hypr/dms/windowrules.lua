@@ -19,8 +19,8 @@ hl.window_rule({ match = { class = "^com.mitchellh.ghostty$" }, float = true, no
 -- DMS-RULE: id=wr_1785244255109347777, name=org.gnome.Nautilus
 hl.window_rule({ match = { class = "^org.gnome.Nautilus$" }, opacity = 0.85 })
 
--- DMS-RULE: id=wr_1785246692781705786, name=org.gnome.Software
-hl.window_rule({ match = { class = "^org.gnome.Software$" }, float = true, size = { 1000, 800 } })
+-- DMS-RULE: id=wr_1785246692781705786, name=io.github.kolunmi.Bazaar
+hl.window_rule({ match = { class = "^io.github.kolunmi.Bazaar$" }, float = true, size = { 1000, 800 } })
 
 -- DMS-RULE: id=wr_1785317505202405666, name=io.bassi.Amberol
 hl.window_rule({ match = { class = "^io.bassi.Amberol$" }, float = true, opaque = true, size = { 442, 660 }, move = { 81, 119 } })
@@ -41,7 +41,7 @@ hl.window_rule({ match = { class = "^chrome-gemini.google.com__app-Default$" }, 
 hl.window_rule({ match = { class = "^org.kde.gwenview$" }, float = true, no_blur = true, size = { 1219, 755 }, move = { 363, 116 } })
 
 -- DMS-RULE: id=wr_1786819423153926720, name=space.f1nn.chorus
-hl.window_rule({ match = { class = "^space.f1nn.chorus$" }, float = true, opaque = true, size = { 487, 660 }, move = { 1294, 114 } })
+hl.window_rule({ match = { class = "^space.f1nn.chorus$" }, float = true, opacity = 0.75, size = { 487, 660 }, move = { 1294, 114 } })
 
 -- DMS-RULE: id=wr_1786859113261185127, name=chrome-chat.deepseek.com__-Default
 hl.window_rule({ match = { class = "^chrome-chat.deepseek.com__-Default$" }, float = true, opacity = 0.9, size = { 503, 836 }, move = { 1370, 93 } })
