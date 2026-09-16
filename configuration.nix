@@ -318,7 +318,6 @@
     bazaar
     nil
     nixd
-    waydroid-helper
 
 
 
@@ -339,7 +338,7 @@
 
 
     #---------------------------------------------------------------------------
-    # Customized Media Players
+    # Customized Packages
     #---------------------------------------------------------------------------
 
     (mpv.override {
@@ -352,5 +351,20 @@
         thumbfast
       ];
     })
+
+
+    (pkgs.waydroid-helper.overrideAttrs (oldAttrs: {
+        version = "0.2.7";
+        src = pkgs.fetchFromGitHub {
+          owner = "waydroid-helper";
+          repo = "waydroid-helper";
+          rev = "v0.2.7";
+          # Setting hash to empty string forces Nix to throw a mismatch error
+          # containing the correct sha256 hash if this placeholder fails.
+          hash = "sha256-I8DwaPQQz4eSyuTCwkbidhXACfpdOYcmGjP7d03DIU0=";
+        };
+      }))
+
+
   ];
 }
