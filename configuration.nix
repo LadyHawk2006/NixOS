@@ -292,6 +292,7 @@
     bazaar
     nil
     nixd
+    proton-vpn
 
 
 
