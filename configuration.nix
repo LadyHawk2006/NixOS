@@ -51,12 +51,6 @@
 
   system.stateVersion = "26.05";
 
-  systemd = {
-    packages = [ pkgs.waydroid-helper ];
-    services.waydroid-mount.wantedBy = [ "multi-user.target" ];
-  };
-
-
   # ============================================================================
   # Networking & Localization
   # ============================================================================
