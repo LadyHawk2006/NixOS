@@ -93,7 +93,7 @@
   users.users."shadrack" = {
     isNormalUser = true;
     description = "Shadrack";
-    extraGroups = [ "networkmanager" "wheel" "input" "adbusers" "minidlna" ];
+    extraGroups = [ "networkmanager" "wheel" "input" "adbusers" ];
     packages = with pkgs; [];
     shell = pkgs.fish;
   };
@@ -127,26 +127,6 @@
     KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
     KERNEL=="event*", NAME="input/%k", MODE="0666"
   '';
-
-  services.keyd = {
-    enable = true;
-    keyboards = {
-      default = {
-        ids = [ "c0f4:10f5" ]; # Your USB keyboard ID
-        settings = {
-          main = {
-            f4 = "media";
-            f5 = "playpause";
-            f6 = "command(playerctl previous)";
-            f7 = "command(playerctl next)";
-            f8 = "volumedown";
-            f9 = "volumeup";
-            f10 = "mute";
-          };
-        };
-      };
-    };
-  };
 
   services.openssh.enable = true;
   services.tailscale.enable = true;
@@ -233,6 +213,10 @@
   # ============================================================================
   virtualisation.waydroid.enable = true;
   virtualisation.waydroid.package = pkgs.waydroid-nftables;
+  systemd = {
+    packages = [ pkgs.waydroid-helper ];
+    services.waydroid-mount.wantedBy = [ "multi-user.target" ];
+  };
 
   # ============================================================================
   # Fonts
@@ -246,6 +230,8 @@
 
 
   nix.settings.auto-optimise-store = true;
+
+
 
   # ============================================================================
   # System Packages
@@ -276,8 +262,6 @@
     steam-run
     ffmpegthumbnailer
     playerctl
-    keyd
-    caddy
     nodejs
     bat
     wineWow64Packages.wayland
@@ -289,30 +273,25 @@
     ghostty
     nautilus
     gapless
-    amberol
     google-chrome
     brave-origin
-#   vscode
     zed-editor
-#   gnome-software
+    waydroid-helper
     glava
     gdu
     kdePackages.kwallet
     kdePackages.dolphin
     kdePackages.partitionmanager
-    easyeffects
     gpu-screen-recorder-gtk
     losslesscut-bin
     localsend
     valent
-    kdePackages.kdenlive
     spotify
     kdePackages.gwenview
     ocamlPackages.gstreamer
     bazaar
     nil
     nixd
-    waydroid-helper
 
 
 
