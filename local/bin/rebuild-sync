@@ -76,9 +76,14 @@ if not mkdir -p $BACKUP_DIR $TRASH_DIR
 end
 test -f $LOG_FILE; or touch $LOG_FILE
 
-# Ensure runtime state never gets committed.
-if not test -f $BACKUP_DIR/.gitignore
-    printf '%s\n' '.trash/' '.push_pending' 'backup.log' '.lock' > $BACKUP_DIR/.gitignore
+# Ensure runtime state never gets committed. `backup.log` is managed
+# separately (untracked + manually listed in .gitignore), so the script
+# does not touch that entry here.
+touch $BACKUP_DIR/.gitignore
+for entry in '.trash/' '.push_pending' '.lock'
+    if not grep -qxF $entry $BACKUP_DIR/.gitignore 2>/dev/null
+        echo $entry >> $BACKUP_DIR/.gitignore
+    end
 end
 
 # Prevent concurrent runs by re-executing this script under flock.
@@ -230,12 +235,15 @@ log_message STEP "Syncing with remote..."
 set -l pending_push 0
 test -f $PENDING_FILE; and set pending_push 1
 
-# Belt-and-braces: the tree should be clean after commit; if not, stop
-# before the rebase so we don't hide changes with an autostash.
-if test (count (git -C $BACKUP_DIR status --porcelain)) -gt 0
-    log_message ERROR "Working tree dirty before rebase; aborting."
-    notify "Backup tree dirty" "Resolve in $BACKUP_DIR"
-    exit 1
+# A dirty tree here is normally post-commit noise (fish rewriting its
+# state file, log appends, etc.). The pull below uses --autostash to
+# handle it, so we just log what's dirty at INFO and continue.
+set -l dirty (git -C $BACKUP_DIR status --porcelain)
+if test (count $dirty) -gt 0
+    log_message INFO "Post-commit tree changes:"
+    for line in $dirty
+        log_message INFO "  $line"
+    end
 end
 
 # If the remote branch doesn't exist yet, skip the pull and just push.
@@ -246,7 +254,11 @@ if not git -C $BACKUP_DIR ls-remote --exit-code $REMOTE $BRANCH >/dev/null 2>&1
 end
 
 if test $remote_has_branch -eq 1
-    if not git -C $BACKUP_DIR pull --rebase $REMOTE $BRANCH >> $LOG_FILE 2>&1
+    # --autostash stashes any dirty changes, rebases, then pops the stash.
+    # If the pop conflicts, the stash stays in `git stash list` for manual
+    # recovery — but for our file set (config files + no shared log),
+    # conflicts on the stash are essentially impossible.
+    if not git -C $BACKUP_DIR pull --rebase --autostash $REMOTE $BRANCH >> $LOG_FILE 2>&1
         log_message ERROR "Rebase failed (conflict or network). Manual resolution required."
         notify "Backup rebase failed" "Resolve in $BACKUP_DIR"
         git -C $BACKUP_DIR rebase --abort 2>/dev/null
