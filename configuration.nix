@@ -223,7 +223,7 @@ in
     nautilus proton-vpn spotify valent waydroid-helper zed-editor
 
     # -- Development & Core Libraries --
-    nil nixd ocamlPackages.gstreamer
+    nil nixd ocamlPackages.gstreamer gitleaks
 
     # -- Desktop Environment & Theming Engines --
     adwaita-icon-theme breeze-hacked-cursor-theme candy-icons hyprpolkitagent
