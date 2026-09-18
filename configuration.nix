@@ -1,94 +1,114 @@
-# ============================================================================
-  #                     NIXOS CONFIGURATION FILE
-  # ============================================================================
-
 { config, pkgs, ... }:
 
+let
+  cachyosSrc = builtins.fetchTarball {
+    url = "https://github.com/xddxdd/nix-cachyos-kernel/archive/refs/heads/release.tar.gz";
+  };
+
+  # Uses 'pinned' overlay to guarantee a binary cache hit instead of compiling from source
+  cachyosOverlay = (import cachyosSrc).overlays.pinned;
+
+  pkgsWithCachy = import pkgs.path {
+    system = pkgs.stdenv.hostPlatform.system; # Fixed evaluation warning
+    config.allowUnfree = true; # Permits proprietary apps like Chrome and Spotify
+    overlays = [ cachyosOverlay ];
+  };
+in
 {
   # ============================================================================
-  # Imports
+  # 1. Imports & Core Nix Settings
   # ============================================================================
+  imports = [ ./hardware-configuration.nix ];
 
-  imports = [
-    # Include the results of the hardware scan.
-    ./hardware-configuration.nix
-  ];
-
-  # ============================================================================
-  # Nixpkgs Configuration
-  # ============================================================================
-
+  system.stateVersion = "26.05";
   nixpkgs.config.allowUnfree = true;
 
+  nix.settings = {
+    auto-optimise-store = true;
+    substituters = [ "https://attic.xuyh0120.win/lantian" ];
+    trusted-public-keys = [ "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc=" ];
+  };
 
   # ============================================================================
-  # System & Boot
+  # 2. Hardware, Peripherals & Graphics
   # ============================================================================
+  hardware = {
+    bluetooth.enable = true;
+    xone.enable = true;
+    graphics = {
+      enable = true;
+      extraPackages = with pkgs; [
+        intel-media-driver
+        intel-vaapi-driver
+        libvdpau-va-gl
+      ];
+    };
+  };
 
-  boot.loader = {
+  services.udev.extraRules = ''
+    KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
+    KERNEL=="event*", NAME="input/%k", MODE="0666"
+  '';
+
+  services.acpid.enable = true;
+  services.upower.enable = true;
+  services.printing.enable = true;
+  services.blueman.enable = true;
+
+  # ============================================================================
+  # 3. Bootloader & Kernel (CachyOS)
+  # ============================================================================
+  boot = {
+    loader = {
       systemd-boot.enable = false;
-        grub = {
+      grub = {
         enable = true;
         efiSupport = true;
         device = "nodev";
-        # useOSProber = true; # (Optional) Uncomment if dual-booting with Windows/other OS
-
         theme = pkgs.nixos-grub2-theme;
       };
-
       efi = {
         canTouchEfiVariables = true;
         efiSysMountPoint = "/boot";
       };
     };
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-# boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
-  boot.kernelModules = [ "xpad" "uinput" ];
-  boot.kernel.sysctl = {
-    "net.ipv4.ip_forward" = 1;
-    "net.ipv6.conf.all.forwarding" = 1;
+
+    kernelPackages = pkgsWithCachy.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
+    kernelModules = [ "xpad" "uinput" ];
+    kernel.sysctl = {
+      "net.ipv4.ip_forward" = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
+    };
   };
 
-  system.stateVersion = "26.05";
-
   # ============================================================================
-  # Networking & Localization
+  # 4. Networking, Firewall & Tailscale
   # ============================================================================
-
-  networking.hostName = "nixos"; # Define your hostname.
-  networking.networkmanager.enable = true;
-  networking.firewall.trustedInterfaces = [ "waydroid0" "tailscale0" ];
-
-  networking.firewall = {
-    enable = true;
-
-    allowedTCPPorts = [
-      53317
-      8080
-    ];
-
-    allowedUDPPorts = [
-      53317
-      8080
-      41641
-    ];
-
-    allowedTCPPortRanges = [
-      { from = 30000; to = 50000; }
-      { from = 1714; to = 1764; }
-    ];
-
-    allowedUDPPortRanges = [
-      { from = 1714; to = 1764; }
-    ];
+  networking = {
+    hostName = "nixos";
+    networkmanager.enable = true;
+    firewall = {
+      enable = true;
+      trustedInterfaces = [ "waydroid0" "tailscale0" ];
+      allowedTCPPorts = [ 8080 53317 ];
+      allowedUDPPorts = [ 8080 41641 53317 ];
+      allowedTCPPortRanges = [
+        { from = 1714; to = 1764; }
+        { from = 30000; to = 50000; }
+      ];
+      allowedUDPPortRanges = [
+        { from = 1714; to = 1764; }
+      ];
+    };
   };
 
+  services.tailscale.enable = true;
+
+  # ============================================================================
+  # 5. Localization & User Configuration
+  # ============================================================================
   time.timeZone = "Africa/Nairobi";
   i18n.defaultLocale = "en_US.UTF-8";
-
-  # ============================================================================
-  # User Management & Shell
-  # ============================================================================
 
   users.users."shadrack" = {
     isNormalUser = true;
@@ -98,42 +118,34 @@
     shell = pkgs.fish;
   };
 
+  # ============================================================================
+  # 6. Core Services, Virtualization & Network Storage
+  # ============================================================================
+  security.polkit.enable = true;
+  services.openssh.enable = true;
+  services.gvfs.enable = true;
+  services.udisks2.enable = true;
+  services.flatpak.enable = true;
+
+  programs.fuse.userAllowOther = true;
+  programs.nix-ld.enable = true;
+  programs.dconf.enable = true;
   programs.fish.enable = true;
 
-  # ============================================================================
-  # Hardware & Peripheral Configuration
-  # ============================================================================
-
-  hardware.bluetooth.enable = true;
-  hardware.xone.enable = true; # Adds enhanced Xbox controller drivers/rules
-  hardware.graphics = {
+  # -- Waydroid Virtualization --
+  virtualisation.waydroid = {
     enable = true;
-    extraPackages = with pkgs; [
-      intel-media-driver  # For Broadwell (2014) and newer CPUs (uses iHD driver)
-      intel-vaapi-driver  # Fallback for older i965 drivers
-      libvdpau-va-gl
-    ];
+    package = pkgs.waydroid-nftables;
+  };
+  systemd = {
+    packages = [ pkgs.waydroid-helper ];
+    services.waydroid-mount.wantedBy = [ "multi-user.target" ];
   };
 
-
-  security.polkit.enable = true;
-
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
-
-  services.udev.extraRules = ''
-    KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
-    KERNEL=="event*", NAME="input/%k", MODE="0666"
-  '';
-
-  services.openssh.enable = true;
-  services.tailscale.enable = true;
-
+  # -- Local Network File Sharing (Samba) --
   services.samba = {
     enable = true;
-    openFirewall = true; # Automatically opens required SMB ports
+    openFirewall = true;
     settings = {
       global = {
         "workgroup" = "WORKGROUP";
@@ -141,43 +153,37 @@
         "netbios name" = "nixos";
         "security" = "user";
       };
-      "Videos" = {
-        "path" = "/home/shadrack/Videos";
-        "browseable" = "yes";
-        "read only" = "yes";
-        "guest ok" = "no";
-      };
+    } // pkgs.lib.genAttrs [ "Videos" "Music" ] (folder: {
+      "path" = "/home/shadrack/${folder}";
+      "browseable" = "yes";
+      "read only" = "yes";
+      "guest ok" = "no";
+    });
+  };
 
-      "Music" = {
-        "path" = "/home/shadrack/Music";
-        "browseable" = "yes";
-        "read only" = "yes";
-        "guest ok" = "no";
-      };
+  # ============================================================================
+  # 7. Desktop Environment (Hyprland), Display & Fonts
+  # ============================================================================
+  programs = {
+    hyprland = {
+      enable = true;
+      xwayland.enable = true;
     };
+    uwsm.enable = true;
+    dms-shell = {
+      enable = true;
+      package = pkgs.dms-shell;
+    };
+    gpu-screen-recorder.enable = true;
   };
-
-  # ============================================================================
-  # Desktop Environment & Display Services
-  # ============================================================================
-  programs.hyprland = {
-    enable = true;
-    xwayland.enable = true;
-  };
-
-  programs.uwsm.enable = true;
-  programs.fuse.userAllowOther = true;
-  programs.dms-shell.enable = true;
-  programs.dms-shell.package = pkgs.dms-shell;
-  programs.nix-ld.enable = true;
-  programs.dconf.enable = true;
-  programs.gpu-screen-recorder.enable = true;
 
   services.displayManager.dms-greeter = {
     enable = true;
     compositor.name = "hyprland";
     configHome = "/home/shadrack";
   };
+
+  services.xserver.xkb = { layout = "us"; variant = ""; };
 
   xdg.portal = {
     enable = true;
@@ -190,37 +196,8 @@
     LIBVA_DRIVER_NAME = "iHD";
   };
 
+  qt = { enable = true; platformTheme = "qt5ct"; };
 
-  qt = {
-    enable = true;
-    platformTheme = "qt5ct";
-  };
-
-
-  # ============================================================================
-  # System Services & Daemons
-  # ============================================================================
-  services.acpid.enable = true;
-  services.blueman.enable = true;
-  services.upower.enable = true;
-  services.printing.enable = true;
-  services.gvfs.enable = true;
-  services.udisks2.enable = true;
-  services.flatpak.enable = true;
-
-  # ============================================================================
-  # Virtualization
-  # ============================================================================
-  virtualisation.waydroid.enable = true;
-  virtualisation.waydroid.package = pkgs.waydroid-nftables;
-  systemd = {
-    packages = [ pkgs.waydroid-helper ];
-    services.waydroid-mount.wantedBy = [ "multi-user.target" ];
-  };
-
-  # ============================================================================
-  # Fonts
-  # ============================================================================
   fonts.packages = with pkgs; [
     nerd-fonts.fira-code
     nerd-fonts.jetbrains-mono
@@ -228,102 +205,35 @@
     noto-fonts-color-emoji
   ];
 
-
-  nix.settings.auto-optimise-store = true;
-
-
-
   # ============================================================================
-  # System Packages
+  # 8. System Packages
   # ============================================================================
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with pkgsWithCachy; [
 
-    #---------------------------------------------------------------------------
-    # Utilities & CLI Tools
-    #---------------------------------------------------------------------------
-
-    vim
-    wget
-    curl
-    git
-    wl-clipboard
-    libnotify
-    eza
-    wev
-    usbutils
-    fastfetch
-    yt-dlp
-    android-tools
-    scrcpy
-    uv
-    ffmpeg-full
-    python3
-    brightnessctl
-    steam-run
-    ffmpegthumbnailer
-    playerctl
-    nodejs
-    bat
+    # -- Utilities & CLI Tools --
+    android-tools bat brightnessctl curl eza fastfetch ffmpeg-full
+    ffmpegthumbnailer git libnotify nodejs playerctl python3 scrcpy
+    usbutils uv vim wev wget wl-clipboard yt-dlp
     wineWow64Packages.wayland
 
-    #---------------------------------------------------------------------------
-    # Terminal & GUI Applications
-    #---------------------------------------------------------------------------
+    # -- GUI Applications & System Tools --
+    brave-origin bazaar gapless gdu ghostty glava google-chrome
+    gpu-screen-recorder-gtk kdePackages.dolphin kdePackages.gwenview
+    kdePackages.kwallet kdePackages.partitionmanager localsend losslesscut-bin
+    nautilus proton-vpn spotify valent waydroid-helper zed-editor
 
-    ghostty
-    nautilus
-    gapless
-    google-chrome
-    brave-origin
-    zed-editor
-    waydroid-helper
-    glava
-    gdu
-    kdePackages.kwallet
-    kdePackages.dolphin
-    kdePackages.partitionmanager
-    gpu-screen-recorder-gtk
-    losslesscut-bin
-    localsend
-    valent
-    spotify
-    kdePackages.gwenview
-    ocamlPackages.gstreamer
-    bazaar
-    nil
-    nixd
-    proton-vpn
+    # -- Development & Core Libraries --
+    nil nixd ocamlPackages.gstreamer
 
-
-
-    #---------------------------------------------------------------------------
-    # Desktop Environment Components & Libraries
-    #---------------------------------------------------------------------------
-
-    hyprpolkitagent
-    qt6.qtwayland
-    qt6.qtbase
-    adwaita-icon-theme
-    candy-icons
+    # -- Desktop Environment & Theming Engines --
+    adwaita-icon-theme breeze-hacked-cursor-theme candy-icons hyprpolkitagent
+    libsForQt5.qt5ct qt6Packages.qt6ct qt6.qtbase qt6.qtwayland qtengine
     sweet-folders
-    breeze-hacked-cursor-theme
-    libsForQt5.qt5ct
-    qt6Packages.qt6ct
-    qtengine
 
-
-    #---------------------------------------------------------------------------
-    # Customized Media Players
-    #---------------------------------------------------------------------------
-
+    # -- Customized Media Player --
     (mpv.override {
       scripts = with mpvScripts; [
-        mpris
-        sponsorblock
-        quality-menu
-        mpv-playlistmanager
-#       modernz
-        thumbfast
+        mpris sponsorblock quality-menu mpv-playlistmanager thumbfast
       ];
     })
   ];
