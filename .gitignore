@@ -1,0 +1,4 @@
+.trash/
+.push_pending
+backup.log
+.lock

@@ -1303,3 +1303,273 @@
 2026-09-18 12:56:10 ✓ Synced: ~/.config/fish/
 2026-09-18 12:56:10 ✓ Synced: ~/.local/bin/
 2026-09-18 12:56:10 :: All file copies successful! Checking for Git updates...
+2026-09-18 12:56:11 :: Git commit successful. Pushing to remote...
+2026-09-18 12:56:15 :: Backup successfully pushed to remote repository.
+2026-09-18 12:56:15 :: Backup process completed successfully!
+2026-09-18 13:16:53 [STEP] Starting NixOS rebuild...
+2026-09-18 13:17:21 [OK] Rebuild successful.
+2026-09-18 13:17:21 [STEP] Syncing config files...
+
+Number of files: 1 (reg: 1)
+Number of created files: 1 (reg: 1)
+Number of deleted files: 0
+Number of regular files transferred: 1
+Total file size: 7,377 bytes
+Total transferred file size: 7,377 bytes
+Literal data: 7,377 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 7,506
+Total bytes received: 34
+
+sent 7,506 bytes  received 34 bytes  15,080.00 bytes/sec
+total size is 7,377  speedup is 0.98
+2026-09-18 13:17:21 [OK] Synced: /etc/nixos/configuration.nix
+
+Number of files: 1 (reg: 1)
+Number of created files: 1 (reg: 1)
+Number of deleted files: 0
+Number of regular files transferred: 1
+Total file size: 1,282 bytes
+Total transferred file size: 1,282 bytes
+Literal data: 1,282 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 1,420
+Total bytes received: 34
+
+sent 1,420 bytes  received 34 bytes  2,908.00 bytes/sec
+total size is 1,282  speedup is 0.88
+2026-09-18 13:17:21 [OK] Synced: /etc/nixos/hardware-configuration.nix
+
+Number of files: 8 (reg: 4, dir: 4)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 3
+Total file size: 246,507 bytes
+Total transferred file size: 52,360 bytes
+Literal data: 52,360 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.002 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 52,775
+Total bytes received: 68
+
+sent 52,775 bytes  received 68 bytes  105,686.00 bytes/sec
+total size is 246,507  speedup is 4.66
+2026-09-18 13:17:21 [OK] Synced: /home/shadrack/.config/mpv/
+
+Number of files: 25 (reg: 18, dir: 7)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 9
+Total file size: 20,134 bytes
+Total transferred file size: 2,299 bytes
+Literal data: 2,299 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.003 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 3,464
+Total bytes received: 182
+
+sent 3,464 bytes  received 182 bytes  7,292.00 bytes/sec
+total size is 20,134  speedup is 5.52
+2026-09-18 13:17:21 [OK] Synced: /home/shadrack/.config/hypr/
+
+Number of files: 18 (reg: 14, dir: 4)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 11
+Total file size: 36,809 bytes
+Total transferred file size: 9,462 bytes
+Literal data: 9,462 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 10,474
+Total bytes received: 220
+
+sent 10,474 bytes  received 220 bytes  21,388.00 bytes/sec
+total size is 36,809  speedup is 3.44
+2026-09-18 13:17:21 [OK] Synced: /home/shadrack/.config/fish/
+
+Number of files: 4 (reg: 3, dir: 1)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 1
+Total file size: 16,859 bytes
+Total transferred file size: 11,400 bytes
+Literal data: 11,400 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 11,589
+Total bytes received: 30
+
+sent 11,589 bytes  received 30 bytes  23,238.00 bytes/sec
+total size is 16,859  speedup is 1.45
+2026-09-18 13:17:22 [OK] Synced: /home/shadrack/.local/bin/
+2026-09-18 13:17:22 [STEP] Staging changes...
+2026-09-18 13:17:22 [STEP] Scanning for secrets...
+Error: unknown flag: --staged
+Usage:
+  gitleaks detect [flags]
+
+Flags:
+      --follow-symlinks                               scan files that are symlinks to other files
+  -h, --help                                          help for detect
+      --log-opts string                               git log options
+      --no-git                                        treat git repo as a regular directory and scan those files, --log-opts has no effect on the scan when --no-git is set
+      --pipe cat some_file | gitleaks detect --pipe   scan input from stdin, ex: cat some_file | gitleaks detect --pipe
+      --platform string                               the target platform used to generate links (github, gitlab)
+  -s, --source string                                 path to source (default ".")
+
+Global Flags:
+  -b, --baseline-path string          path to baseline with issues that can be ignored
+  -c, --config string                 config file path
+                                      order of precedence:
+                                      1. --config/-c
+                                      2. env var GITLEAKS_CONFIG
+                                      3. env var GITLEAKS_CONFIG_TOML with the file content
+                                      4. (target path)/.gitleaks.toml
+                                      If none of the four options are used, then gitleaks will use the default config
+      --diagnostics string            enable diagnostics (http OR comma-separated list: cpu,mem,trace). cpu=CPU prof, mem=memory prof, trace=exec tracing, http=serve via net/http/pprof
+      --diagnostics-dir string        directory to store diagnostics output files when not using http mode (defaults to current directory)
+      --enable-rule strings           only enable specific rules by id
+      --exit-code int                 exit code when leaks have been encountered (default 1)
+  -i, --gitleaks-ignore-path string   path to .gitleaksignore file or folder containing one (default ".")
+      --ignore-gitleaks-allow         ignore gitleaks:allow comments
+  -l, --log-level string              log level (trace, debug, info, warn, error, fatal) (default "info")
+      --max-archive-depth int         allow scanning into nested archives up to this depth (default "0", no archive traversal is done)
+      --max-decode-depth int          allow recursive decoding up to this depth (default 5)
+      --max-target-megabytes int      files larger than this will be skipped
+      --no-banner                     suppress banner
+      --no-color                      turn off color for verbose output
+      --redact uint[=100]             redact secrets from logs and stdout. To redact only parts of the secret just apply a percent value from 0..100. For example --redact=20 (default 100%)
+  -f, --report-format string          output format (json, csv, junit, sarif, template)
+  -r, --report-path string            report file (use "-" for stdout)
+      --report-template string        template file used to generate the report (implies --report-format=template)
+      --timeout int                   set a timeout for gitleaks commands in seconds (default "0", no timeout is set)
+  -v, --verbose                       show verbose output from scan
+
+2026-09-18 13:17:22 [ERROR] gitleaks reported a finding (or failed). Aborting.
+2026-09-18 13:18:44 [STEP] Starting NixOS rebuild...
+2026-09-18 13:19:08 [OK] Rebuild successful.
+2026-09-18 13:19:08 [STEP] Syncing config files...
+
+Number of files: 1 (reg: 1)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 0
+Total file size: 7,377 bytes
+Total transferred file size: 0 bytes
+Literal data: 0 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 86
+Total bytes received: 11
+
+sent 86 bytes  received 11 bytes  194.00 bytes/sec
+total size is 7,377  speedup is 76.05
+2026-09-18 13:19:08 [OK] Synced: /etc/nixos/configuration.nix
+
+Number of files: 1 (reg: 1)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 0
+Total file size: 1,282 bytes
+Total transferred file size: 0 bytes
+Literal data: 0 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 95
+Total bytes received: 11
+
+sent 95 bytes  received 11 bytes  212.00 bytes/sec
+total size is 1,282  speedup is 12.09
+2026-09-18 13:19:08 [OK] Synced: /etc/nixos/hardware-configuration.nix
+
+Number of files: 8 (reg: 4, dir: 4)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 0
+Total file size: 246,507 bytes
+Total transferred file size: 0 bytes
+Literal data: 0 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 282
+Total bytes received: 11
+
+sent 282 bytes  received 11 bytes  586.00 bytes/sec
+total size is 246,507  speedup is 841.32
+2026-09-18 13:19:08 [OK] Synced: /home/shadrack/.config/mpv/
+
+Number of files: 25 (reg: 18, dir: 7)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 0
+Total file size: 20,134 bytes
+Total transferred file size: 0 bytes
+Literal data: 0 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 786
+Total bytes received: 11
+
+sent 786 bytes  received 11 bytes  1,594.00 bytes/sec
+total size is 20,134  speedup is 25.26
+2026-09-18 13:19:09 [OK] Synced: /home/shadrack/.config/hypr/
+
+Number of files: 18 (reg: 14, dir: 4)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 0
+Total file size: 36,809 bytes
+Total transferred file size: 0 bytes
+Literal data: 0 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 539
+Total bytes received: 11
+
+sent 539 bytes  received 11 bytes  1,100.00 bytes/sec
+total size is 36,809  speedup is 66.93
+2026-09-18 13:19:09 [OK] Synced: /home/shadrack/.config/fish/
+
+Number of files: 4 (reg: 3, dir: 1)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 1
+Total file size: 17,002 bytes
+Total transferred file size: 11,543 bytes
+Literal data: 11,543 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 11,733
+Total bytes received: 30
+
+sent 11,733 bytes  received 30 bytes  23,526.00 bytes/sec
+total size is 17,002  speedup is 1.45
+2026-09-18 13:19:09 [OK] Synced: /home/shadrack/.local/bin/
+2026-09-18 13:19:09 [STEP] Staging changes...

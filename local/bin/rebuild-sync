@@ -1,103 +1,289 @@
 #!/usr/bin/env fish
+# nixbuild — NixOS rebuild + secure dotfile backup + git sync
+#
+# Behavior:
+#   1. Rebuilds NixOS. Aborts on failure.
+#   2. Rsyncs config files to $BACKUP_DIR with recoverable deletes.
+#   3. Scans staged changes for secrets (gitleaks).
+#   4. Commits, rebases onto remote, pushes with retry.
+#   5. Notifies on push failure; marks pending push for next run.
+#
+# Run as your normal user (not root). `sudo` is invoked only for the rebuild.
 
-set BACKUP_DIR "$HOME/.sysbackup"
-set LOG_FILE "$BACKUP_DIR/backup.log"
+# ─── Config ──────────────────────────────────────────────────────────────
+set -g BACKUP_DIR   "$HOME/.sysbackup"
+set -g LOG_FILE     "$BACKUP_DIR/backup.log"
+set -g TRASH_DIR    "$BACKUP_DIR/.trash"
+set -g PENDING_FILE "$BACKUP_DIR/.push_pending"
+set -g LOCK_FILE    "$BACKUP_DIR/.lock"
+set -g REMOTE       "origin"
+set -g BRANCH       "main"
+set -g PUSH_RETRIES 3
 
-# Function for logging
-function log_message -a message
-    echo (date "+%Y-%m-%d %H:%M:%S") "$message" | tee -a $LOG_FILE
+# ─── Logging ─────────────────────────────────────────────────────────────
+# Logs everything to file; only critical steps to stdout.
+# Usage: log_message "LEVEL" "message"
+#   LEVEL ∈ INFO | OK | WARN | ERROR | STEP
+function log_message -a level message
+    set -l ts (date "+%Y-%m-%d %H:%M:%S")
+    set -l line "$ts [$level] $message"
+    echo $line >> $LOG_FILE
+
+    switch $level
+        case STEP OK WARN ERROR
+            # Critical steps also go to the terminal.
+            set -l color normal
+            switch $level
+                case OK;    set color green
+                case WARN;  set color yellow
+                case ERROR; set color red
+                case STEP;  set color cyan
+            end
+            # Only colorize when stdout is a TTY; otherwise emit plain text.
+            if isatty stdout
+                set_color $color
+                echo $line
+                set_color normal
+            else
+                echo $line
+            end
+        case INFO
+            # INFO is file-only; keeps terminal clean.
+    end
 end
 
-log_message ":: Starting NixOS rebuild..."
-
-# Rebuild using the system configuration
-if sudo nixos-rebuild switch
-    log_message ":: Rebuild successful! Syncing changed files to $BACKUP_DIR..."
-
-    # Ensure destination directories exist
-    mkdir -p $BACKUP_DIR/config
-    mkdir -p $BACKUP_DIR/local/bin
-
-    # Rsync options as separate arguments
-    set RSYNC_OPTS -a -u --delete --stats
-
-    # Create an array of sync operations
-    set sync_operations \
-        "/etc/nixos/configuration.nix $BACKUP_DIR/" \
-        "/etc/nixos/hardware-configuration.nix $BACKUP_DIR/"
-
-    # Add config directories
-    set sync_operations $sync_operations \
-        "~/.config/mpv/ $BACKUP_DIR/config/mpv/" \
-        "~/.config/hypr/ $BACKUP_DIR/config/hypr/" \
-        "~/.config/fish/ $BACKUP_DIR/config/fish/" \
-        "~/.local/bin/ $BACKUP_DIR/local/bin/"
-
-    set sync_failed 0
-
-    for operation in $sync_operations
-        set source (echo $operation | cut -d' ' -f1)
-        set dest (echo $operation | cut -d' ' -f2)
-        set expanded_source (eval echo $source)
-
-        if test -e $expanded_source
-            if rsync $RSYNC_OPTS $expanded_source $dest
-                log_message "✓ Synced: $source"
-            else
-                log_message "✗ Failed to sync: $source"
-                set sync_failed 1
-            end
-        else
-            log_message "⚠ Source does not exist: $source (skipping)"
-        end
+function notify -a title body
+    # notify-send needs a session bus; skip over SSH / headless sessions.
+    if not command -sq notify-send
+        return
     end
-
-    if test $sync_failed -eq 0
-        log_message ":: All file copies successful! Checking for Git updates..."
-
-        set current_dir (pwd)
-        cd $BACKUP_DIR
-
-        if git add .
-            set changes_count (git diff --staged --numstat | wc -l)
-
-            if test $changes_count -gt 0
-                set current_date (date "+%Y-%m-%d %H:%M:%S")
-
-                set current_hostname (hostname)
-                set nixos_version (nixos-version)
-
-                if git commit -m "backup: post-rebuild sync ($current_date)
-Host: $current_hostname
-NixOS: $nixos_version
-Files changed: $changes_count"
-                    log_message ":: Git commit successful. Pushing to remote..."
-
-                    if git push origin main
-                        log_message ":: Backup successfully pushed to remote repository."
-                    else
-                        log_message ":: Git push failed! Check your network and authentication."
-                    end
-                else
-                    log_message ":: Git commit failed!"
-                    exit 1
-                end
-            else
-                log_message ":: No configuration changes detected. Skipping Git operations."
-            end
-        else
-            log_message ":: Git add failed!"
-            exit 1
-        end
-
-        cd $current_dir
-    else
-        log_message ":: File sync failed! Skipping Git operations."
-        exit 1
+    if not set -q DISPLAY; and not set -q WAYLAND_DISPLAY
+        return
     end
-else
-    log_message ":: NixOS rebuild failed! Skipping copy and upload."
+    notify-send -a "nixbuild" -u normal "$title" "$body"
+end
+
+# ─── Preconditions ───────────────────────────────────────────────────────
+# Refuse to run as root: $HOME would be /root and the backup would land there.
+if test (id -u) -eq 0
+    echo "nixbuild: do not run as root. Run as your normal user; sudo is used internally." >&2
     exit 1
 end
 
-log_message ":: Backup process completed successfully!"
+if not mkdir -p $BACKUP_DIR $TRASH_DIR
+    echo "nixbuild: cannot create $BACKUP_DIR" >&2
+    exit 1
+end
+test -f $LOG_FILE; or touch $LOG_FILE
+
+# Ensure runtime state never gets committed.
+if not test -f $BACKUP_DIR/.gitignore
+    printf '%s\n' '.trash/' '.push_pending' 'backup.log' '.lock' > $BACKUP_DIR/.gitignore
+end
+
+# Prevent concurrent runs by re-executing this script under flock.
+# The NIXBUILD_LOCKED sentinel (exported to the child) stops infinite
+# recursion. flock holds the lock for the lifetime of the child fish
+# process and releases it automatically when that process exits.
+#
+# Note: we use `exec flock` (not `exec 9>...`) because Fish's builtin
+# `exec` does not support the POSIX `exec N>file` FD-opening form.
+if command -sq flock
+    if not set -q NIXBUILD_LOCKED
+        set -lx NIXBUILD_LOCKED 1
+        exec flock -n $LOCK_FILE (status filename) $argv
+    end
+else
+    log_message WARN "flock not available — skipping concurrency guard."
+end
+
+log_message STEP "Starting NixOS rebuild..."
+
+# ─── 1. Rebuild ──────────────────────────────────────────────────────────
+# Added $argv to allow passing flags like --upgrade or --option
+if not sudo nixos-rebuild switch $argv
+    log_message ERROR "NixOS rebuild failed. Aborting backup."
+    notify "NixOS rebuild failed" "Backup skipped. See $LOG_FILE"
+    exit 1
+end
+log_message OK "Rebuild successful."
+
+# ─── 2. Rsync ────────────────────────────────────────────────────────────
+# Pairs of "source dest". $HOME used directly so no eval/expansion needed.
+set -l syncs \
+    /etc/nixos/configuration.nix          $BACKUP_DIR/nixos/ \
+    /etc/nixos/hardware-configuration.nix $BACKUP_DIR/nixos/ \
+    $HOME/.config/mpv/                    $BACKUP_DIR/config/mpv/ \
+    $HOME/.config/hypr/                   $BACKUP_DIR/config/hypr/ \
+    $HOME/.config/fish/                   $BACKUP_DIR/config/fish/ \
+    $HOME/.local/bin/                     $BACKUP_DIR/local/bin/
+
+# Validate the pairs list is well-formed before iterating.
+if test (math (count $syncs) % 2) -ne 0
+    log_message ERROR "Internal error: syncs list has odd length."
+    exit 1
+end
+
+# -a            archive (perms, times, symlinks)
+# --delete-after  remove dest files not in source, AFTER transfer (safer than --delete)
+# --backup      keep overwritten/deleted files
+# --backup-dir  put them in a per-run trash dir (recoverable)
+# --stats       print transfer stats
+set -l run_trash (mktemp -d "$TRASH_DIR/$(date +%Y%m%d-%H%M%S)-XXXXXX")
+set -l rsync_opts -a --delete-after --stats --backup --backup-dir=$run_trash
+
+set -l sync_failed 0
+log_message STEP "Syncing config files..."
+
+for i in (seq 1 2 (count $syncs))
+    set -l src $syncs[$i]
+    set -l dst $syncs[(math $i + 1)]
+
+    if not test -e $src
+        log_message WARN "Source missing: $src (skipping)"
+        continue
+    end
+
+    mkdir -p (dirname $dst)
+    rsync $rsync_opts $src $dst >> $LOG_FILE 2>&1
+    set -l rc $status
+    switch $rc
+        case 0
+            log_message OK "Synced: $src"
+        case 24
+            # Partial transfer: some source files vanished mid-run.
+            # Not fatal for a backup of live config.
+            log_message WARN "Partial sync (files vanished): $src"
+        case '*'
+            log_message ERROR "Sync failed (rsync rc=$rc): $src"
+            set sync_failed 1
+    end
+end
+
+if test $sync_failed -ne 0
+    log_message ERROR "One or more syncs failed. Skipping git."
+    notify "Backup sync failed" "See $LOG_FILE"
+    exit 1
+end
+
+# Clean up empty trash dirs (nothing was overwritten/deleted this run).
+# `_` is a read-only variable in Fish — use `string length` instead of `read`.
+if test -d $run_trash
+    if test -z (find $run_trash -mindepth 1 -print -quit)
+        rmdir $run_trash 2>/dev/null
+    end
+end
+
+# ─── 3. Stage + secret scan ──────────────────────────────────────────────
+# Stage first so gitleaks sees exactly what's about to be committed.
+log_message STEP "Staging changes..."
+if not git -C $BACKUP_DIR add .
+    log_message ERROR "git add failed."
+    exit 1
+end
+
+log_message STEP "Scanning for secrets..."
+if command -sq gitleaks
+    # gitleaks ≥ 8.19 removed `protect` and deprecated `detect`.
+    # The current invocation is: gitleaks git <path> --staged
+    # (positional path, not --source).
+    if not gitleaks git $BACKUP_DIR --staged --no-banner \
+                             --redact --exit-code 1 >> $LOG_FILE 2>&1
+        log_message ERROR "gitleaks reported a finding (or failed). Aborting."
+        log_message INFO "Reproduce with: gitleaks git $BACKUP_DIR --staged --no-banner --redact"
+        notify "Secret scan failed" "Backup aborted — check $LOG_FILE"
+        exit 1
+    end
+    log_message OK "gitleaks: clean."
+else
+    log_message WARN "gitleaks not installed — skipping secret scan."
+end
+
+# ─── 4. Commit ───────────────────────────────────────────────────────────
+set -l changes (git -C $BACKUP_DIR status --porcelain | wc -l | string trim)
+
+if test "$changes" -gt 0
+    # string collect makes the message robust against quotes/newlines in
+    # hostname / nixos-version output.
+    set -l host   (hostname | string collect)
+    set -l nixver (nixos-version 2>/dev/null | string collect; or echo unknown)
+    set -l msg "backup: post-rebuild sync "(date "+%Y-%m-%d %H:%M:%S")"
+Host: $host
+NixOS: $nixver
+Files changed: $changes"
+
+    if not git -C $BACKUP_DIR commit -m "$msg" >> $LOG_FILE 2>&1
+        log_message ERROR "git commit failed."
+        exit 1
+    end
+    log_message OK "Committed $changes file(s)."
+else
+    log_message INFO "No changes to commit."
+end
+
+# ─── 5. Rebase + push (with retry and notification) ──────────────────────
+# We push even if there was nothing to commit, because a previous run may
+# have left a local commit unpushed (network was down last time).
+log_message STEP "Syncing with remote..."
+
+# Did a previous run leave a commit stranded?
+set -l pending_push 0
+test -f $PENDING_FILE; and set pending_push 1
+
+# Belt-and-braces: the tree should be clean after commit; if not, stop
+# before the rebase so we don't hide changes with an autostash.
+if test (count (git -C $BACKUP_DIR status --porcelain)) -gt 0
+    log_message ERROR "Working tree dirty before rebase; aborting."
+    notify "Backup tree dirty" "Resolve in $BACKUP_DIR"
+    exit 1
+end
+
+# If the remote branch doesn't exist yet, skip the pull and just push.
+set -l remote_has_branch 1
+if not git -C $BACKUP_DIR ls-remote --exit-code $REMOTE $BRANCH >/dev/null 2>&1
+    set remote_has_branch 0
+    log_message WARN "Remote branch $REMOTE/$BRANCH not found — skipping pull."
+end
+
+if test $remote_has_branch -eq 1
+    if not git -C $BACKUP_DIR pull --rebase $REMOTE $BRANCH >> $LOG_FILE 2>&1
+        log_message ERROR "Rebase failed (conflict or network). Manual resolution required."
+        notify "Backup rebase failed" "Resolve in $BACKUP_DIR"
+        git -C $BACKUP_DIR rebase --abort 2>/dev/null
+        exit 1
+    end
+end
+
+# Retry push with linear backoff on failure (network, auth, remote down).
+set -l pushed 0
+for attempt in (seq 1 $PUSH_RETRIES)
+    if git -C $BACKUP_DIR push $REMOTE $BRANCH >> $LOG_FILE 2>&1
+        set pushed 1
+        break
+    end
+    if test $attempt -lt $PUSH_RETRIES
+        set -l delay (math -s0 "2 ^ $attempt")   # 2s, 4s, 8s
+        log_message WARN "Push attempt $attempt failed. Retrying in {$delay}s..."
+        sleep $delay
+    end
+end
+
+if test $pushed -eq 1
+    log_message OK "Pushed to $REMOTE/$BRANCH."
+    if test $pending_push -eq 1
+        rm -f $PENDING_FILE
+        log_message INFO "Cleared pending-push marker."
+    end
+else
+    # Backup is safe locally; only remote sync failed. Don't exit 1 —
+    # the next run will retry because the marker is set.
+    log_message ERROR "Push failed after $PUSH_RETRIES attempts. Commit is local."
+    touch $PENDING_FILE
+    notify "Backup push failed" "Commit saved locally; will retry next run. Check network."
+    log_message WARN "Marked pending push. Next nixbuild will retry."
+    # Exit 0: the backup itself succeeded. Change to 1 if you want
+    # failures to be loud in your shell prompt.
+    exit 0
+end
+
+log_message STEP "Backup completed successfully."
