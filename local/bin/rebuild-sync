@@ -106,11 +106,13 @@ log_message STEP "Starting NixOS rebuild..."
 
 # ─── 1. Rebuild ──────────────────────────────────────────────────────────
 # Added $argv to allow passing flags like --upgrade or --option
-if not sudo nixos-rebuild switch $argv
+if not sudo nixos-rebuild switch --log-format internal-json $argv |& nom --json
     log_message ERROR "NixOS rebuild failed. Aborting backup."
     notify "NixOS rebuild failed" "Backup skipped. See $LOG_FILE"
     exit 1
 end
+
+
 log_message OK "Rebuild successful."
 
 # ─── 2. Rsync ────────────────────────────────────────────────────────────

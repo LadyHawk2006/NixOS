@@ -14,7 +14,7 @@ hl.window_rule({ match = { class = ".*mpv.*" }, float = true, no_shadow = true, 
 hl.window_rule({ match = { class = "^GLava$" }, no_blur = true })
 
 -- DMS-RULE: id=wr_1785244135333411555, name=com.mitchellh.ghostty
-hl.window_rule({ match = { class = "^com.mitchellh.ghostty$" }, float = true, no_blur = true, opacity = 0.8, size = { 1100, 700 }, move = { 400, 121 } })
+hl.window_rule({ match = { class = "^com.mitchellh.ghostty$" }, float = true, no_blur = true, opacity = 0.9, size = { 1100, 700 }, move = { 400, 121 } })
 
 -- DMS-RULE: id=wr_1785244255109347777, name=org.gnome.Nautilus
 hl.window_rule({ match = { class = "^org.gnome.Nautilus$" }, opacity = 0.85 })

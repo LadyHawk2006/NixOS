@@ -35,8 +35,10 @@ in
   hardware = {
     bluetooth.enable = true;
     xone.enable = true;
+    steam-hardware.enable = true; # Enables udev rules for controllers (Steam Controller, Xbox, PS5)
     graphics = {
       enable = true;
+      enable32Bit = true; # Required for 32-bit games and Proton DirectX/Vulkan translation
       extraPackages = with pkgs; [
         intel-media-driver
         intel-vaapi-driver
@@ -162,7 +164,7 @@ in
   };
 
   # ============================================================================
-  # 7. Desktop Environment (Hyprland), Display & Fonts
+  # 7. Desktop Environment (Hyprland), Gaming & Display
   # ============================================================================
   programs = {
     hyprland = {
@@ -175,6 +177,18 @@ in
       package = pkgs.dms-shell;
     };
     gpu-screen-recorder.enable = true;
+    gamemode.enable = true; # Improves performance while playing games
+
+    # Steam Module Configuration
+    steam = {
+      enable = true;
+      remotePlay.openFirewall = true;
+      dedicatedServer.openFirewall = true;
+      localNetworkGameTransfers.openFirewall = true;
+      extraCompatPackages = with pkgs; [
+        proton-ge-bin # Adds Proton-GE for improved game compatibility
+      ];
+    };
   };
 
   services.displayManager.dms-greeter = {
@@ -214,7 +228,7 @@ in
     android-tools bat brightnessctl curl eza fastfetch ffmpeg-full
     ffmpegthumbnailer git libnotify nodejs playerctl python3 scrcpy
     usbutils uv vim wev wget wl-clipboard yt-dlp
-    wineWow64Packages.wayland nix-output-monitor
+    wineWow64Packages.wayland nix-output-monitor steam-run
 
     # -- GUI Applications & System Tools --
     brave-origin bazaar gapless gdu ghostty glava google-chrome
