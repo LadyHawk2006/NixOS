@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Chorus
+Comment=Sing along to your music
+Exec=chorus
+Icon=space.f1nn.chorus
+Terminal=false
+Categories=AudioVideo;Audio;Music;
+Keywords=lyrics;sync;music;audio;song;mpris;karaoke;
+StartupNotify=true

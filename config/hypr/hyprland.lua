@@ -1,4 +1,5 @@
 -- Hyprland Configuration
+---@diagnostic disable: undefined-global
 
 -- https://wiki.hypr.land/Configuring/
 

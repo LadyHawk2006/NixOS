@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 f1nniboy -->
+<component type="desktop-application">
+  <id>space.f1nn.chorus</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Chorus</name>
+  <summary>Sing along to your music</summary>
+  <description>
+    <p>
+      Chorus watches whatever music player is running on your system and shows
+      synced or plain lyrics for the current track.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Follows any music player automatically, or lets you pick one manually</li>
+      <li>Synced lyrics scroll and highlight the current line as the song plays</li>
+      <li>Click any line to seek directly to it</li>
+      <li>Blurred cover art as a live background</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">space.f1nn.chorus.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The main window</caption>
+      <image>https://raw.githubusercontent.com/f1nniboy/chorus/refs/tags/v0.6.0/data/screenshots/1.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The main window in light mode</caption>
+      <image>https://raw.githubusercontent.com/f1nniboy/chorus/refs/tags/v0.6.0/data/screenshots/2.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The preferences pop-up</caption>
+      <image>https://raw.githubusercontent.com/f1nniboy/chorus/refs/tags/v0.6.0/data/screenshots/3.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/f1nniboy/chorus</url>
+  <url type="vcs-browser">https://github.com/f1nniboy/chorus</url>
+  <url type="bugtracker">https://github.com/f1nniboy/chorus/issues</url>
+  <url type="translate">https://hosted.weblate.org/engage/chorus/</url>
+  <url type="contact">https://matrix.to/#/#chorus:oss.zone</url>
+  <content_rating type="oars-1.1"/>
+  <branding>
+    <color type="primary" scheme_preference="light">#73adf7</color>
+    <color type="primary" scheme_preference="dark">#114b91</color>
+  </branding>
+  <categories>
+    <category>Audio</category>
+    <category>Music</category>
+  </categories>
+  <keywords>
+    <keyword>lyrics</keyword>
+    <keyword>sync</keyword>
+    <keyword>music</keyword>
+    <keyword>audio</keyword>
+    <keyword>song</keyword>
+    <keyword>karaoke</keyword>
+  </keywords>
+  <developer id="space.f1nn">
+    <name translate="no">f1nniboy</name>
+  </developer>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <internet>always</internet>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <releases>
+    <release version="0.6.1" date="2026-08-11">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.6.1</url>
+    </release>
+    <release version="0.6.0" date="2026-08-11">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.6.0</url>
+    </release>
+    <release version="0.5.1" date="2026-08-03">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.5.1</url>
+    </release>
+    <release version="0.5.0" date="2026-07-30">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.5.0</url>
+    </release>
+    <release version="0.4.0" date="2026-07-26">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.4.0</url>
+    </release>
+    <release version="0.3.0" date="2026-07-23">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.3.0</url>
+    </release>
+    <release version="0.2.0" date="2026-07-23">
+      <url type="details">https://github.com/f1nniboy/chorus/releases/tag/v0.2.0</url>
+    </release>
+  </releases>
+</component>
