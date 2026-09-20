@@ -35,8 +35,7 @@ hl.bind("ALT + C", hl.dsp.exec_cmd("sh -c 'GSETTINGS_SCHEMA_DIR=/home/shadrack/.
 --hl.bind("CTRL + End", hl.dsp.exec_cmd("nixedit"))
 
 -- Screenshots & DMS Integration
-hl.bind("Print", hl.dsp.exec_cmd("dms screenshot full"))
-hl.bind("ALT + Print", hl.dsp.exec_cmd("dms screenshot window"))
+hl.bind("Print", hl.dsp.exec_cmd("grimblast copysave screen ~/Pictures/Screenshots/$(date +'%Y-%m-%d_%H-%M-%S').png"))
 hl.bind("CTRL + Print", hl.dsp.exec_cmd("dms screenshot"))
 hl.bind("CTRL + SHIFT + Delete", hl.dsp.exec_cmd("dms ipc call processlist focusOrToggle"))
 hl.bind("CTRL + SHIFT + R", hl.dsp.exec_cmd("dms ipc call workspace-rename open"))
