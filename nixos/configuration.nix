@@ -215,7 +215,7 @@
     android-tools bat brightnessctl curl eza fastfetch ffmpeg-full
     ffmpegthumbnailer git libnotify nodejs playerctl python3 scrcpy
     usbutils uv vim wev wget wl-clipboard yt-dlp
-    wineWow64Packages.wayland nix-output-monitor steam-run
+    wineWow64Packages.wayland nix-output-monitor steam-run grimblast
 
     # -- GUI Applications & System Tools --
     brave-origin bazaar gapless gdu ghostty glava google-chrome
