@@ -28,9 +28,6 @@ hl.window_rule({ match = { class = "^io.bassi.Amberol$" }, float = true, opaque 
 -- DMS-RULE: id=wr_1785403040512166560, name=Waydroid
 hl.window_rule({ match = { class = "^Waydroid$" }, fullscreen = true })
 
--- DMS-RULE: id=wr_1785419065590369829, name=com.github.naaando.lyrics
-hl.window_rule({ match = { class = "^com.github.naaando.lyrics$" }, float = true, no_shadow = true, no_blur = true, size = { 556, 678 }, move = { 1298, 100 } })
-
 -- DMS-RULE: id=wr_1785573915573279595, name=com.dec05eba.gpu_screen_recorder
 hl.window_rule({ match = { class = "^com.dec05eba.gpu_screen_recorder$" }, float = true, opacity = 0.8, size = { 600, 800 }, move = { 1298, 100 } })
 
@@ -41,7 +38,7 @@ hl.window_rule({ match = { class = "^chrome-gemini.google.com__app-Default$" }, 
 hl.window_rule({ match = { class = "^org.kde.gwenview$" }, float = true, no_blur = true, size = { 1219, 755 }, move = { 363, 116 } })
 
 -- DMS-RULE: id=wr_1786819423153926720, name=space.f1nn.chorus
-hl.window_rule({ match = { class = "^space.f1nn.chorus$" }, float = true, opaque = true, size = { 487, 660 }, move = { 1294, 114 } })
+hl.window_rule({ match = { class = "^space.f1nn.chorus$" }, float = true, opaque = true, size = { 660, 600 }, move = { 1113, 151 } })
 
 -- DMS-RULE: id=wr_1786859113261185127, name=chrome-chat.deepseek.com__-Default
 hl.window_rule({ match = { class = "^chrome-chat.deepseek.com__-Default$" }, float = true, opacity = 0.9, size = { 503, 836 }, move = { 1370, 93 } })
@@ -71,4 +68,7 @@ hl.window_rule({ match = { class = "^.scrcpy-wrapped$" }, float = true, size = {
 hl.window_rule({ match = { class = "^com.danklinux.dms$" }, float = true })
 
 -- DMS-RULE: id=wr_1789385011797467517, name=spotify
-hl.window_rule({ match = { class = "^spotify$" }, float = true, opacity = 0.75, size = { 800, 683 }, move = { 69, 92 } })
+hl.window_rule({ match = { class = "^spotify$" }, float = true, opacity = 0.95, size = { 800, 683 }, move = { 82, 114 } })
+
+-- DMS-RULE: id=wr_1789879545235021358, name=steam_app_244210
+hl.window_rule({ match = { class = "^steam_app_$" }, fullscreen = true, opaque = true })
