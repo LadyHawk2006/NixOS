@@ -111,7 +111,12 @@ log_message STEP "Starting NixOS rebuild..."
 # Flakes require files to be tracked by git. Stage changes in the flake
 # repo so the flake sees them. Don't fail hard if it's not a git repo —
 # the rebuild will surface that if it matters.
-if not git -C $FLAKE_DIR add .
+if git -C $FLAKE_DIR add .
+    # Check if there are staged changes; if so, commit them to clear the dirty warning
+    if not git -C $FLAKE_DIR diff --staged --quiet
+        git -C $FLAKE_DIR commit -m "auto: pre-rebuild commit" >/dev/null 2>&1
+    end
+else
     log_message WARN "Could not stage $FLAKE_DIR (not a git repo?). Continuing."
 end
 
