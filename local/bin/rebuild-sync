@@ -2,13 +2,18 @@
 # nixbuild — NixOS rebuild + secure dotfile backup + git sync
 #
 # Behavior:
-#   1. Rebuilds NixOS. Aborts on failure.
+#   1. Stages NixOS flake files, then rebuilds NixOS. Aborts on failure.
 #   2. Rsyncs config files to $BACKUP_DIR with recoverable deletes.
 #   3. Scans staged changes for secrets (gitleaks).
 #   4. Commits, rebases onto remote, pushes with retry.
 #   5. Notifies on push failure; marks pending push for next run.
 #
 # Run as your normal user (not root). `sudo` is invoked only for the rebuild.
+#
+# Any command-line arguments are forwarded to `nixos-rebuild switch` (this
+# script takes none of its own). Use it for things like `--show-trace` or
+# `--option`. If that ever changes, switch to argparse and use `--` to
+# separate script flags from nixos-rebuild flags.
 
 # ─── Config ──────────────────────────────────────────────────────────────
 set -g BACKUP_DIR   "$HOME/.sysbackup"
@@ -20,10 +25,12 @@ set -g REMOTE       "origin"
 set -g BRANCH       "main"
 set -g PUSH_RETRIES 3
 
+# Source of the NixOS flake (git repo). This is what gets staged before
+# rebuild and rsynced into the backup.
+set -g FLAKE_DIR    "$HOME/.config/nixos"
+
 # ─── Logging ─────────────────────────────────────────────────────────────
 # Logs everything to file; only critical steps to stdout.
-# Usage: log_message "LEVEL" "message"
-#   LEVEL ∈ INFO | OK | WARN | ERROR | STEP
 function log_message -a level message
     set -l ts (date "+%Y-%m-%d %H:%M:%S")
     set -l line "$ts [$level] $message"
@@ -31,7 +38,6 @@ function log_message -a level message
 
     switch $level
         case STEP OK WARN ERROR
-            # Critical steps also go to the terminal.
             set -l color normal
             switch $level
                 case OK;    set color green
@@ -39,7 +45,6 @@ function log_message -a level message
                 case ERROR; set color red
                 case STEP;  set color cyan
             end
-            # Only colorize when stdout is a TTY; otherwise emit plain text.
             if isatty stdout
                 set_color $color
                 echo $line
@@ -48,7 +53,7 @@ function log_message -a level message
                 echo $line
             end
         case INFO
-            # INFO is file-only; keeps terminal clean.
+            # INFO is file-only.
     end
 end
 
@@ -64,7 +69,6 @@ function notify -a title body
 end
 
 # ─── Preconditions ───────────────────────────────────────────────────────
-# Refuse to run as root: $HOME would be /root and the backup would land there.
 if test (id -u) -eq 0
     echo "nixbuild: do not run as root. Run as your normal user; sudo is used internally." >&2
     exit 1
@@ -76,9 +80,7 @@ if not mkdir -p $BACKUP_DIR $TRASH_DIR
 end
 test -f $LOG_FILE; or touch $LOG_FILE
 
-# Ensure runtime state never gets committed. `backup.log` is managed
-# separately (untracked + manually listed in .gitignore), so the script
-# does not touch that entry here.
+# Ensure runtime state never gets committed.
 touch $BACKUP_DIR/.gitignore
 for entry in '.trash/' '.push_pending' '.lock'
     if not grep -qxF $entry $BACKUP_DIR/.gitignore 2>/dev/null
@@ -86,17 +88,18 @@ for entry in '.trash/' '.push_pending' '.lock'
     end
 end
 
-# Prevent concurrent runs by re-executing this script under flock.
-# The NIXBUILD_LOCKED sentinel (exported to the child) stops infinite
-# recursion. flock holds the lock for the lifetime of the child fish
-# process and releases it automatically when that process exits.
-#
-# Note: we use `exec flock` (not `exec 9>...`) because Fish's builtin
-# `exec` does not support the POSIX `exec N>file` FD-opening form.
+# Concurrency guard: re-exec under flock. NIXBUILD_LOCKED sentinel stops
+# infinite recursion. `flock -n` exits immediately if another instance
+# holds the lock. We canonicalize the script path so the re-exec works
+# even when the script was found via PATH or a symlink.
 if command -sq flock
     if not set -q NIXBUILD_LOCKED
         set -lx NIXBUILD_LOCKED 1
-        exec flock -n $LOCK_FILE (status filename) $argv
+        set -l self (status filename)
+        if command -sq realpath
+            set self (realpath $self)
+        end
+        exec flock -n $LOCK_FILE $self $argv
     end
 else
     log_message WARN "flock not available — skipping concurrency guard."
@@ -105,39 +108,73 @@ end
 log_message STEP "Starting NixOS rebuild..."
 
 # ─── 1. Rebuild ──────────────────────────────────────────────────────────
-# Added $argv to allow passing flags like --upgrade or --option
-if not sudo nixos-rebuild switch --log-format internal-json $argv |& nom --json
-    log_message ERROR "NixOS rebuild failed. Aborting backup."
+# Flakes require files to be tracked by git. Stage changes in the flake
+# repo so the flake sees them. Don't fail hard if it's not a git repo —
+# the rebuild will surface that if it matters.
+if not git -C $FLAKE_DIR add .
+    log_message WARN "Could not stage $FLAKE_DIR (not a git repo?). Continuing."
+end
+
+# Flake attribute: default to hostname; override with NIXBUILD_FLAKE_HOST.
+# `flake_host` is declared here, then *updated* (without -l) inside the
+# branch below — `set -l` inside an `if` would shadow it and be lost.
+set -l flake_host (hostname | string collect)
+if set -q NIXBUILD_FLAKE_HOST
+    set flake_host $NIXBUILD_FLAKE_HOST
+end
+
+# Pipe through `nom` if available. fish has no pipefail by default, so we
+# capture nixos-rebuild's exit status explicitly via $pipestatus (the
+# pipeline's $status would be nom's).
+set -l rebuild_rc 0
+if command -sq nom
+    sudo nixos-rebuild switch --flake $FLAKE_DIR#$flake_host --log-format internal-json $argv |& nom --json
+    set rebuild_rc $pipestatus[1]
+else
+    sudo nixos-rebuild switch --flake $FLAKE_DIR#$flake_host --log-format internal-json $argv
+    set rebuild_rc $status
+end
+
+if test $rebuild_rc -ne 0
+    log_message ERROR "NixOS rebuild failed (rc=$rebuild_rc). Aborting backup."
     notify "NixOS rebuild failed" "Backup skipped. See $LOG_FILE"
     exit 1
 end
 
-
 log_message OK "Rebuild successful."
 
 # ─── 2. Rsync ────────────────────────────────────────────────────────────
-# Pairs of "source dest". $HOME used directly so no eval/expansion needed.
+# Pairs of "source dest".
 set -l syncs \
-    /etc/nixos/configuration.nix          $BACKUP_DIR/nixos/ \
-    /etc/nixos/hardware-configuration.nix $BACKUP_DIR/nixos/ \
+    $FLAKE_DIR/                           $BACKUP_DIR/nixos/ \
     $HOME/.config/mpv/                    $BACKUP_DIR/config/mpv/ \
     $HOME/.config/hypr/                   $BACKUP_DIR/config/hypr/ \
     $HOME/.config/fish/                   $BACKUP_DIR/config/fish/ \
     $HOME/.local/bin/                     $BACKUP_DIR/local/bin/
 
-# Validate the pairs list is well-formed before iterating.
 if test (math (count $syncs) % 2) -ne 0
     log_message ERROR "Internal error: syncs list has odd length."
     exit 1
 end
 
-# -a            archive (perms, times, symlinks)
-# --delete-after  remove dest files not in source, AFTER transfer (safer than --delete)
-# --backup      keep overwritten/deleted files
-# --backup-dir  put them in a per-run trash dir (recoverable)
-# --stats       print transfer stats
+# -a              archive (perms, times, symlinks)
+# --delete-after  remove dest files not in source, AFTER transfer
+# --backup        keep overwritten/deleted files
+# --backup-dir    put them in a per-run trash dir (recoverable)
+# --exclude       skip VCS/build cruft that doesn't belong in a backup
+#
+# The flake dir is itself a git repo; without --exclude=.git we would
+# rsync a nested .git into the backup repo, which breaks `git add .`
+# (gitlink) and bloats the backup. `.direnv/` and `result` are build
+# artifacts that shouldn't be tracked either.
 set -l run_trash (mktemp -d "$TRASH_DIR/$(date +%Y%m%d-%H%M%S)-XXXXXX")
-set -l rsync_opts -a --delete-after --stats --backup --backup-dir=$run_trash
+if test -z "$run_trash"; or not test -d "$run_trash"
+    log_message ERROR "Could not create trash dir under $TRASH_DIR. Aborting."
+    exit 1
+end
+
+set -l rsync_opts -a --delete-after --stats --backup --backup-dir=$run_trash \
+                  --exclude=.git --exclude=.direnv/ --exclude=result
 
 set -l sync_failed 0
 log_message STEP "Syncing config files..."
@@ -158,8 +195,6 @@ for i in (seq 1 2 (count $syncs))
         case 0
             log_message OK "Synced: $src"
         case 24
-            # Partial transfer: some source files vanished mid-run.
-            # Not fatal for a backup of live config.
             log_message WARN "Partial sync (files vanished): $src"
         case '*'
             log_message ERROR "Sync failed (rsync rc=$rc): $src"
@@ -174,7 +209,6 @@ if test $sync_failed -ne 0
 end
 
 # Clean up empty trash dirs (nothing was overwritten/deleted this run).
-# `_` is a read-only variable in Fish — use `string length` instead of `read`.
 if test -d $run_trash
     if test -z (find $run_trash -mindepth 1 -print -quit)
         rmdir $run_trash 2>/dev/null
@@ -191,27 +225,33 @@ end
 
 log_message STEP "Scanning for secrets..."
 if command -sq gitleaks
-    # gitleaks ≥ 8.19 removed `protect` and deprecated `detect`.
-    # The current invocation is: gitleaks git <path> --staged
-    # (positional path, not --source).
-    if not gitleaks git $BACKUP_DIR --staged --no-banner \
-                             --redact --exit-code 1 >> $LOG_FILE 2>&1
-        log_message ERROR "gitleaks reported a finding (or failed). Aborting."
-        log_message INFO "Reproduce with: gitleaks git $BACKUP_DIR --staged --no-banner --redact"
-        notify "Secret scan failed" "Backup aborted — check $LOG_FILE"
-        exit 1
+    gitleaks git $BACKUP_DIR --staged --no-banner --redact --exit-code 1 >> $LOG_FILE 2>&1
+    set -l gl_rc $status
+    switch $gl_rc
+        case 0
+            log_message OK "gitleaks: clean."
+        case 1
+            log_message ERROR "gitleaks found secrets in staged changes. Aborting."
+            log_message INFO "Reproduce: gitleaks git $BACKUP_DIR --staged --no-banner --redact"
+            notify "Secret scan failed" "Backup aborted — check $LOG_FILE"
+            exit 1
+        case '*'
+            log_message ERROR "gitleaks errored (rc=$gl_rc). Aborting to be safe."
+            log_message INFO "Check that your gitleaks version supports 'git --staged'."
+            notify "Secret scan errored" "gitleaks rc=$gl_rc — check $LOG_FILE"
+            exit 1
     end
-    log_message OK "gitleaks: clean."
 else
     log_message WARN "gitleaks not installed — skipping secret scan."
 end
 
 # ─── 4. Commit ───────────────────────────────────────────────────────────
 set -l changes (git -C $BACKUP_DIR status --porcelain | wc -l | string trim)
+if test -z "$changes"
+    set changes 0
+end
 
 if test "$changes" -gt 0
-    # string collect makes the message robust against quotes/newlines in
-    # hostname / nixos-version output.
     set -l host   (hostname | string collect)
     set -l nixver (nixos-version 2>/dev/null | string collect; or echo unknown)
     set -l msg "backup: post-rebuild sync "(date "+%Y-%m-%d %H:%M:%S")"
@@ -229,17 +269,11 @@ else
 end
 
 # ─── 5. Rebase + push (with retry and notification) ──────────────────────
-# We push even if there was nothing to commit, because a previous run may
-# have left a local commit unpushed (network was down last time).
 log_message STEP "Syncing with remote..."
 
-# Did a previous run leave a commit stranded?
 set -l pending_push 0
 test -f $PENDING_FILE; and set pending_push 1
 
-# A dirty tree here is normally post-commit noise (fish rewriting its
-# state file, log appends, etc.). The pull below uses --autostash to
-# handle it, so we just log what's dirty at INFO and continue.
 set -l dirty (git -C $BACKUP_DIR status --porcelain)
 if test (count $dirty) -gt 0
     log_message INFO "Post-commit tree changes:"
@@ -248,7 +282,6 @@ if test (count $dirty) -gt 0
     end
 end
 
-# If the remote branch doesn't exist yet, skip the pull and just push.
 set -l remote_has_branch 1
 if not git -C $BACKUP_DIR ls-remote --exit-code $REMOTE $BRANCH >/dev/null 2>&1
     set remote_has_branch 0
@@ -256,10 +289,6 @@ if not git -C $BACKUP_DIR ls-remote --exit-code $REMOTE $BRANCH >/dev/null 2>&1
 end
 
 if test $remote_has_branch -eq 1
-    # --autostash stashes any dirty changes, rebases, then pops the stash.
-    # If the pop conflicts, the stash stays in `git stash list` for manual
-    # recovery — but for our file set (config files + no shared log),
-    # conflicts on the stash are essentially impossible.
     if not git -C $BACKUP_DIR pull --rebase --autostash $REMOTE $BRANCH >> $LOG_FILE 2>&1
         log_message ERROR "Rebase failed (conflict or network). Manual resolution required."
         notify "Backup rebase failed" "Resolve in $BACKUP_DIR"
@@ -268,7 +297,6 @@ if test $remote_has_branch -eq 1
     end
 end
 
-# Retry push with linear backoff on failure (network, auth, remote down).
 set -l pushed 0
 for attempt in (seq 1 $PUSH_RETRIES)
     if git -C $BACKUP_DIR push $REMOTE $BRANCH >> $LOG_FILE 2>&1
@@ -289,14 +317,10 @@ if test $pushed -eq 1
         log_message INFO "Cleared pending-push marker."
     end
 else
-    # Backup is safe locally; only remote sync failed. Don't exit 1 —
-    # the next run will retry because the marker is set.
     log_message ERROR "Push failed after $PUSH_RETRIES attempts. Commit is local."
     touch $PENDING_FILE
     notify "Backup push failed" "Commit saved locally; will retry next run. Check network."
     log_message WARN "Marked pending push. Next nixbuild will retry."
-    # Exit 0: the backup itself succeeded. Change to 1 if you want
-    # failures to be loud in your shell prompt.
     exit 0
 end
 

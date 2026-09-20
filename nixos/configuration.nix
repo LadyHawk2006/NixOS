@@ -1,19 +1,5 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
-let
-  cachyosSrc = builtins.fetchTarball {
-    url = "https://github.com/xddxdd/nix-cachyos-kernel/archive/refs/heads/release.tar.gz";
-  };
-
-  # Uses 'pinned' overlay to guarantee a binary cache hit instead of compiling from source
-  cachyosOverlay = (import cachyosSrc).overlays.pinned;
-
-  pkgsWithCachy = import pkgs.path {
-    system = pkgs.stdenv.hostPlatform.system; # Fixed evaluation warning
-    config.allowUnfree = true; # Permits proprietary apps like Chrome and Spotify
-    overlays = [ cachyosOverlay ];
-  };
-in
 {
   # ============================================================================
   # 1. Imports & Core Nix Settings
@@ -76,7 +62,7 @@ in
       };
     };
 
-    kernelPackages = pkgsWithCachy.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
+    kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
     kernelModules = [ "xpad" "uinput" ];
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
@@ -223,7 +209,7 @@ in
   # ============================================================================
   # 8. System Packages
   # ============================================================================
-  environment.systemPackages = with pkgsWithCachy; [
+  environment.systemPackages = with pkgs; [
 
     # -- Utilities & CLI Tools --
     android-tools bat brightnessctl curl eza fastfetch ffmpeg-full
