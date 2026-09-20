@@ -2,12 +2,12 @@
 
 <img src="https://raw.githubusercontent.com/NixOS/nixos-artwork/master/logo/nix-snowflake-colours.svg" alt="NixOS" width="120" height="120" />
 
-# NixOS Configuration & Encrypted Backup Sync
+# My NixOS Configuration &amp; Backup
 
-**A reproducible NixOS flake, paired with a self-syncing, secret-scanned, off-machine dotfile backup.**
+**A declaratively-configured NixOS workstation, with a self-syncing, secret-scanned, off-machine dotfile backup.**
 
 [![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
-[![Flakes](https://img.shields.io/badge/Nix-flakes-5277C3?style=flat-square)](https://nixos.wiki/wiki/Flakes)
+[![Flakes](https://img.shields.io/badge/Nix-flakes-5277C3?style=flat-square)](https://wiki.nixos.org/wiki/Flakes)
 [![Hyprland](https://img.shields.io/badge/Wayland-Hyprland-58E1FF?style=flat-square)](https://hyprland.org)
 [![Shell](https://img.shields.io/badge/shell-fish-34C534?style=flat-square)](https://fishshell.com)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](#license)
@@ -16,642 +16,633 @@
 
 ---
 
-## Table of Contents
+## A note before you use this
 
-1. [Overview](#overview)
-2. [The Two-Repository Architecture](#the-two-repository-architecture)
-3. [Repository Layout](#repository-layout)
-4. [System Configuration](#system-configuration)
-5. [The `rebuild-sync.fish` Script](#the-rebuild-syncfish-script)
-6. [What Gets Backed Up](#what-gets-backed-up)
-7. [First-Time Installation](#first-time-installation)
-8. [Restoring on a New Machine](#restoring-on-a-new-machine)
-9. [Day-to-Day Usage](#day-to-day-usage)
-10. [Configuration Reference](#configuration-reference)
-11. [Security Model](#security-model)
-12. [Troubleshooting](#troubleshooting)
-13. [FAQ](#faq)
-14. [References](#references)
+**This is my personal system.** Every choice in this repository — the CachyOS kernel, Hyprland, DMS shell, the specific packages, the file layout, the backup paths — reflects how **I** like my machine. It is not a general-purpose NixOS starter, and it is not opinionated about what *you* should run.
+
+That means two things:
+
+1. If you're cloning this to see what NixOS can look like, or to steal ideas, **feel free to delete anything you don't want**. Strip out `configuration.nix` sections you don't need, remove packages from the list, replace Hyprland with your compositor of choice. The flake is a starting point, not a contract.
+2. If you want exactly what I have, keep it as-is. You'll get an Intel-graphics Hyprland workstation running a CachyOS `-v3` kernel with Steam, Waydroid, Tailscale, Samba, and a set of dotfiles I use daily. Just know that some of it is tuned to my hardware.
+
+I've written the rest of this README as if you (or future-me on a fresh machine) are setting it up from scratch. Follow it in order.
 
 ---
 
-## Overview
+## Prerequisites
 
-This repository is the **single source of truth** for my NixOS workstation. It contains:
+**Read this before you do anything else.** The backup script cannot run until these are done, and the rebuild cannot run until at least step 3 is done.
 
-- A **NixOS flake** that declaratively describes the entire system: kernel, bootloader, desktop environment, services, users, and packages.
-- A **rebuild-and-backup script** (`rebuild-sync.fish`) that turns any configuration change into a single, atomic, reproducible operation: rebuild the system, snapshot the dotfiles into a versioned backup repository, scan for secrets, and push off-machine.
+### 1. A working NixOS install
 
-The design goals are, in order:
+You need a machine already running NixOS — either the one you're migrating *from*, or a fresh minimal install you're migrating *to*. This repository does not bootstrap the OS. It assumes:
 
-| Priority | Goal | How it is achieved |
-|---|---|---|
-| 1 | **Reproducibility** | Everything is pinned via `flake.lock`. The system can be rebuilt from this repo on any x86-64 machine. |
-| 2 | **Recoverability** | Rsync uses `--backup --backup-dir`, so every overwritten or deleted file is preserved in a timestamped trash directory before it disappears. |
-| 3 | **Safety** | Gitleaks runs against the exact staged diff before any commit; the push is not performed if secrets are detected. |
-| 4 | **Resilience** | Push retries with exponential backoff; failures are recorded in a `.push_pending` marker and retried on the next run. |
-| 5 | **Automation without magic** | One command does everything. No daemons, no timers, no cron. |
+- NixOS is already installed and boots.
+- `nixos-rebuild`, `nix`, and `git` are on your `$PATH`. On a minimal install you may need to add `git` temporarily:
+  ```fish
+  nix-shell -p git
+  ```
+- You have `sudo` access (i.e. you're in the `wheel` group).
 
-This README assumes the reader is either the owner of the machine or someone restoring it. It documents not only *what* the config does, but *why* each design decision was made, so that future-me (or a stranger) can pick it up without reverse-engineering.
+If you're restoring on a brand-new machine, do a plain NixOS install first, set the hostname to `nixos` (matching the flake), then come back here.
 
----
+### 2. Create your own GitHub repository
 
-## The Two-Repository Architecture
+Do **not** push to mine. Create your own empty repository:
 
-The system is deliberately split into **two independent Git repositories**:
+1. Go to <https://github.com/new>.
+2. Name it whatever you want. I called mine `NixOS`.
+3. Make it **Private**. You're going to be pushing configuration files, dotfiles, and the flake — even with the secret scan, private is the responsible default.
+4. **Do not** initialise it with a README, `.gitignore`, or license. You want it empty so the first push succeeds cleanly.
+5. Copy the SSH URL. It looks like `git@github.com:<your-username>/<your-repo>.git`.
 
-<div align="center">
+Throughout this README, replace `git@github.com:LadyHawk2006/NixOS.git` with your own repository URL.
 
-```mermaid
-flowchart LR
-    A["Flake Repo<br/><code>~/.config/nixos</code><br/><i>Source of truth</i>"]
-    B["Backup Repo<br/><code>~/.sysbackup</code><br/><i>Versioned snapshots</i>"]
-    C["Remote<br/><code>origin/main</code>"]
+### 3. Configure your Git identity
 
-    A -- "rsync<br/>(read-only mirror)" --> B
-    B -- "git push<br/>(after secret scan)" --> C
-
-    classDef flake fill:#5277C3,color:#fff,stroke:#3a5a99
-    classDef backup fill:#34C534,color:#fff,stroke:#2a9d2a
-    classDef remote fill:#E8C547,color:#000,stroke:#b89a30
-
-    class A flake
-    class B backup
-    class C remote
-```
-
-</div>
-
-### Flake Repo — `~/.config/nixos`
-
-- **What it is:** the *live* configuration. Editing a file here and running `nixos-rebuild switch` changes the system immediately.
-- **What it does *not* do:** it is not the backup. It is the *input* to the backup.
-- **Why keep it separate?** The flake contains `flake.nix`, `configuration.nix`, `hardware-configuration.nix`. These are the *only* things needed to reproduce the OS. Everything else (dotfiles, scripts, `~/.local/bin`) lives elsewhere on the filesystem.
-
-### Backup Repo — `~/.sysbackup`
-
-- **What it is:** a Git repository that mirrors selected parts of your home directory plus the flake repo itself. It is committed and pushed by `rebuild-sync.fish`.
-- **What it does *not* do:** it is not read from at runtime. Nothing in your system configuration references `~/.sysbackup`. It exists purely as an archive.
-- **Why a separate repo?** Because it changes on a completely different cadence. You might edit `~/.config/hypr/hyprland.conf` a dozen times a day; you edit `configuration.nix` once a month. Mixing them means the flake's Git history becomes polluted with unrelated dotfile churn, and rolling back a `configuration.nix` change becomes impossible without also rolling back your dotfiles.
-
-The backup repo also contains the `.gitignore`, `.lock`, `.push_pending`, and `.trash/` directory that govern its own operation — all of which are excluded from version control.
-
----
-
-## Repository Layout
-
-### The Flake Repo
-
-```
-~/.config/nixos/
-├── flake.nix                    # Flake definition: inputs, outputs, host attr
-├── flake.lock                   # Pinned input revisions (machine-generated)
-├── configuration.nix            # Main system configuration
-├── hardware-configuration.nix   # Auto-generated by nixos-generate-config
-└── README.md                    # This file
-```
-
-### The Backup Repo
-
-```
-~/.sysbackup/                    # A Git repository
-├── .git/                        # Backup history
-├── .gitignore                   # Excludes runtime state
-├── .lock                        # flock concurrency guard (gitignored)
-├── .push_pending                # Present only when a push failed (gitignored)
-├── .trash/                      # Per-run trash for overwritten/deleted files (gitignored)
-│   └── YYYYMMDD-HHMMSS-XXXXXX/  # One directory per rsync run
-├── backup.log                   # Append-only log of every run (tracked)
-├── nixos/                       # Mirror of ~/.config/nixos (minus .git)
-├── config/
-│   ├── fish/                    # Fish shell configuration
-│   ├── hypr/                    # Hyprland configuration
-│   └── mpv/                     # MPV configuration and scripts
-└── local/
-    └── bin/                     # Personal scripts from ~/.local/bin
-```
-
-### The Runtime Script
-
-`rebuild-sync.fish` is not stored in either repo by default. It lives wherever you keep your executables — typically `~/.local/bin/rebuild-sync.fish` — so that it is on `$PATH` and can be invoked as `rebuild-sync`. It is however *also* rsynced into the backup as part of `~/.local/bin/`, which means it is self-archiving.
-
----
-
-## System Configuration
-
-This section is a guided tour of `configuration.nix`. It explains the *intent* behind each block, not just the syntax.
-
-### Host Identity
-
-| Property | Value |
-|---|---|
-| Hostname | `nixos` |
-| NetBIOS name | `nixos` |
-| Flake attribute | `nixosConfigurations."nixos"` |
-| Primary user | `shadrack` |
-| Time zone | `Africa/Nairobi` |
-| Locale | `en_US.UTF-8` |
-| State version | `26.05` |
-
-> **Note on state version:** `system.stateVersion = "26.05"` records the NixOS release whose defaults this system was *first* installed with. It is deliberately *not* updated when you upgrade. Changing it can silently alter stateful service behaviour (databases, `/var/lib` layouts). Leave it alone unless you know exactly why you are changing it.
-
-The hostname is defined in `networking.hostName`, and the flake exposes exactly one configuration under the same name. The rebuild script reads `hostname` at runtime and targets that attribute — so the two must agree, or the rebuild will fail with `does not provide attribute 'nixosConfigurations.<host>'`. See [Troubleshooting](#troubleshooting) for the fix.
-
-### Kernel
-
-The system runs the **CachyOS kernel**, pinned via the `nix-cachyos-kernel` flake input with the `pinned` overlay. The overlay ensures the kernel is built against the *exact* nixpkgs revision declared in `flake.lock`, which is what guarantees binary cache hits from CachyOS's Lantian cache.
-
-```nix
-boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
-```
-
-The `-x86_64-v3` suffix means the kernel is compiled for CPUs supporting AVX2, BMI2, FMA, etc. (Intel Haswell / AMD Excavator or newer). If you restore this config on an older CPU, change this line or the kernel will refuse to boot.
-
-### Bootloader
-
-GRUB, in EFI mode, with the NixOS GRUB2 theme, installing to `nodev` (meaning: register with the firmware, do not reinstall the MBR). EFI variables are managed by NixOS (`canTouchEfiVariables = true`), and the ESP is mounted at `/boot`.
-
-### Desktop Environment
-
-The stack is **Hyprland** on **Wayland**, with **UWSM** (Universal Wayland Session Manager) providing session and service management, and **DMS shell** as the status bar / notification / launcher layer. XWayland is enabled for compatibility with games and a small number of legacy apps.
-
-The greeter is `dms-greeter`, configured to launch the Hyprland compositor directly with `configHome = "/home/shadrack"` so that it reads the same config as an interactive login.
-
-Portal configuration includes `xdg-desktop-portal-gtk` for file pickers; Hyprland provides its own `xdg-desktop-portal-hyprland` via the module.
-
-### Graphics
-
-Intel graphics are assumed. `hardware.graphics.enable` and `enable32Bit` are both on (required for Proton / DirectX translation in 32-bit games). The `extraPackages` list selects `intel-media-driver` (iHD) and `intel-vaapi-driver` (i965) with `libvdpau-va-gl` as a VDPAU shim. `LIBVA_DRIVER_NAME=iHD` is exported session-wide so VA-API consumers pick the modern driver.
-
-### Services
-
-| Service | Purpose |
-|---|---|
-| `tailscale` | Mesh VPN. Port `41641/UDP` is allowed. |
-| `samba` | Read-only SMB shares for `~/Videos` and `~/Music`, auth required. |
-| `waydroid` | Android container, using the `waydroid-nftables` variant. |
-| `openssh` | Remote shell access. |
-| `flatpak` | Flathub-compatible application sandbox. |
-| `blueman` | Bluetooth tray UI. |
-| `upower`, `acpid` | Power management. |
-| `printing` | CUPS. |
-| `udisks2`, `gvfs` | Removable media and virtual filesystem support. |
-
-### Gaming
-
-Steam with `remotePlay`, `dedicatedServer`, and `localNetworkGameTransfers` firewalls opened. `proton-ge-bin` is added as an `extraCompatPackage`, so Proton-GE appears in Steam's compatibility tool list without manual installation. `gamemode` is enabled system-wide.
-
-### Firewall Summary
-
-| Direction | Ports |
-|---|---|
-| TCP allowed | `8080`, `53317`, `1714–1764`, `30000–50000` |
-| UDP allowed | `8080`, `41641`, `53317`, `1714–1764` |
-| Trusted interfaces | `waydroid0`, `tailscale0` |
-
-The `30000–50000/TCP` range is the standard Steam Remote Play range. `53317` is LocalSend. `41641/UDP` is Tailscale's direct-connection port.
-
----
-
-## The `rebuild-sync.fish` Script
-
-This is the heart of the workflow. It is a single Fish shell script that performs five phases in strict order. **No phase runs if the previous one failed.**
-
-<div align="center">
-
-```mermaid
-flowchart TD
-    Start([rebuild-sync]) --> Lock{flock<br/>available?}
-    Lock -- yes --> Acquire[Acquire lock<br/>on .lock]
-    Lock -- no --> Warn[Warn and continue]
-    Acquire --> Stage[git add .<br/>in flake repo]
-    Warn --> Stage
-    Stage --> Rebuild[<b>Phase 1</b><br/>nixos-rebuild switch]
-    Rebuild -- fail --> Abort1([Abort:<br/>no backup])
-    Rebuild -- ok --> Rsync[<b>Phase 2</b><br/>rsync with trash]
-    Rsync -- fail --> Abort2([Abort:<br/>no git])
-    Rsync -- ok --> Add[<b>Phase 3</b><br/>git add .<br/>in backup repo]
-    Add --> Scan{gitleaks<br/>clean?}
-    Scan -- no --> Abort3([Abort:<br/>secrets found])
-    Scan -- yes --> Commit[<b>Phase 4</b><br/>git commit]
-    Commit --> Pull[<b>Phase 5</b><br/>git pull --rebase]
-    Pull -- conflict --> Abort4([Abort:<br/>manual fix])
-    Pull -- ok --> Push[git push<br/>with retries]
-    Push -- fail --> Pending[Write .push_pending<br/>notify]
-    Push -- ok --> Done([Done])
-    Pending --> Done
-
-    classDef abort fill:#D9534F,color:#fff
-    classDef done fill:#34C534,color:#fff
-    classDef phase fill:#5277C3,color:#fff
-    class Abort1,Abort2,Abort3,Abort4 abort
-    class Done done
-    class Rebuild,Rsync,Add,Commit,Pull,Push phase
-```
-
-</div>
-
-### Phase 0 — Preconditions and Concurrency
-
-Before anything else, the script:
-
-1. **Refuses to run as root.** `sudo` is invoked internally; running the whole script as root would create root-owned files in your home directory.
-2. **Creates `~/.sysbackup` and its subdirectories** if missing. Fails loudly if it cannot.
-3. **Bootstraps `.gitignore`.** Ensures `.trash/`, `.push_pending`, and `.lock` are ignored, so runtime state never enters the backup history. This is idempotent — safe to run repeatedly.
-4. **Acquires an exclusive lock** via `flock -n` on `~/.sysbackup/.lock`. If another instance is running, the script exits immediately. The lock is re-exec'd through the script itself (with a `NIXBUILD_LOCKED` sentinel to prevent infinite recursion), so the lock is held for the script's entire lifetime.
-
-> **Why flock and not a PID file?** Because the kernel releases flock automatically when the process dies — even on `SIGKILL`. A PID file would leave a stale lock after a crash.
-
-### Phase 1 — Rebuild
+Git will refuse to commit without a name and email. Set them once, globally:
 
 ```fish
-git -C $FLAKE_DIR add .
-sudo nixos-rebuild switch --flake $FLAKE_DIR#$flake_host --log-format internal-json $argv |& nom --json
+git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"
 ```
 
-Two things happen here:
+Use the **same email** you registered your GitHub account with, otherwise commits won't be attributed to you.
 
-- **Staging the flake.** Flakes require all referenced files to be tracked by Git. If you add a new `.nix` file and don't `git add` it, `nixos-rebuild` will fail with `path '...' is not tracked`. The script stages everything automatically. It does *not* commit — that is left to your normal Git workflow.
-- **Rebuilding.** The target is `$FLAKE_DIR#$flake_host`, where `flake_host` is `hostname`'s output unless `NIXBUILD_FLAKE_HOST` is set. Output is piped through `nom` (nix-output-monitor) for a live, tree-structured progress display, unless `nom` is not installed.
+### 4. Generate an SSH key and add it to GitHub
 
-The exit code is captured from `nixos-rebuild`, not `nom` — this matters because Fish has no `pipefail`, so the pipeline's default `$status` would report the *last* command's result.
+GitHub over HTTPS will prompt for a password (which no longer works) or a personal access token (which is tedious). SSH keys are the sane option. If you already have a key, skip to the "add to GitHub" step.
 
-**On failure:** the script logs, notifies via `notify-send`, and exits `1`. **No backup is performed.** This is intentional: backing up after a failed rebuild would create a snapshot that does not correspond to a working system.
-
-### Phase 2 — Rsync with Recoverable Deletes
-
-The sync list is defined as source–destination pairs:
-
-| Source | Destination |
-|---|---|
-| `~/.config/nixos/` | `~/.sysbackup/nixos/` |
-| `~/.config/mpv/` | `~/.sysbackup/config/mpv/` |
-| `~/.config/hypr/` | `~/.sysbackup/config/hypr/` |
-| `~/.config/fish/` | `~/.sysbackup/config/fish/` |
-| `~/.local/bin/` | `~/.sysbackup/local/bin/` |
-
-The rsync invocation is:
+**Generate a key** (ed25519 is the modern default; do not use RSA):
 
 ```fish
-rsync -a --delete-after --stats --backup --backup-dir=$run_trash \
-      --exclude=.git --exclude=.direnv/ --exclude=result \
-      $src $dst
+ssh-keygen -t ed25519 -C "you@example.com"
 ```
 
-Each flag has a specific purpose:
+When prompted:
 
-| Flag | Purpose |
-|---|---|
-| `-a` | Archive mode: preserve permissions, timestamps, symlinks, ownership. |
-| `--delete-after` | Remove files in the destination that are not in the source — but only *after* the transfer completes, so an interrupted run leaves the destination consistent. |
-| `--backup` | Before overwriting or deleting a destination file, save a copy. |
-| `--backup-dir=$run_trash` | Put those copies in a **per-run timestamped directory** under `~/.sysbackup/.trash/`. This is what makes deletes recoverable. |
-| `--exclude=.git` | Do not rsync nested Git repositories. Without this, `~/.config/nixos/.git` would be copied into the backup, creating a gitlink that breaks `git add .`. |
-| `--exclude=.direnv/`, `--exclude=result` | Build artifacts and Nix store symlinks. Not useful in a backup. |
+- Press **Enter** to accept the default path (`~/.ssh/id_ed25519`).
+- Enter a passphrase if you want one. I recommend yes. If you set one, make sure `ssh-agent` is running (see below) so you don't type it on every push.
 
-After all syncs, if the trash directory is empty (nothing was overwritten or deleted this run), it is removed. Otherwise it is left in place and grows the backup's on-disk footprint by exactly the size of the deleted/overwritten files.
-
-**Recovery:** to restore a file that was deleted by a run on `2026-09-20` at `14:30:22`, look in `~/.sysbackup/.trash/20260920-143022-XXXXXX/` and find the file at its original relative path.
-
-### Phase 3 — Secret Scan
+**Start the SSH agent and add the key**:
 
 ```fish
-git -C $BACKUP_DIR add .
-gitleaks git $BACKUP_DIR --staged --no-banner --redact --exit-code 1
+eval (ssh-agent -c)
+ssh-add ~/.ssh/id_ed25519
 ```
 
-Gitleaks runs against the **staged diff** — exactly what the next commit would contain. This is the last line of defence against accidentally versioning an API key, token, or password that found its way into `~/.config/`.
+To make this happen automatically on every login, add the `ssh-agent` invocation to your fish config (`~/.config/fish/config.fish`).
 
-Exit codes are interpreted distinctly:
-
-| Code | Meaning | Action |
-|---|---|---|
-| `0` | No secrets found | Continue. |
-| `1` | Secrets found | Abort, notify, exit `1`. |
-| Other | gitleaks itself errored (e.g. unsupported flag) | Abort *fail-closed*. Do not commit. |
-
-Fail-closed on tool errors is deliberate: a broken scanner that silently allows commits is worse than no scanner at all.
-
-If `gitleaks` is not installed, a warning is logged and the scan is skipped — the script does not fail. This is a trade-off; install gitleaks if you want the guarantee.
-
-### Phase 4 — Commit
-
-If `git status --porcelain` reports any staged changes, the script commits them with a structured message:
-
-```
-backup: post-rebuild sync 2026-09-20 14:30:22
-Host: nixos
-NixOS: 26.05.20260915.abcdef
-Files changed: 42
-```
-
-If there are no changes, the commit is skipped and a message is logged. The script does *not* abort — pushing a no-op commit would be noise.
-
-### Phase 5 — Rebase and Push
+**Copy the public key**:
 
 ```fish
-git pull --rebase --autostash origin main
-git push origin main
+cat ~/.ssh/id_ed25519.pub
 ```
 
-The pull-rebase is attempted only if the remote branch exists (`git ls-remote --exit-code`). This makes the script safe to run on a brand-new backup repo that has no remote yet — it will simply skip the pull and push the initial commit.
+**Add it to GitHub**:
 
-The push is retried up to **3 times** with exponential backoff (`2s`, `4s`, `8s`). If all retries fail:
+1. Go to <https://github.com/settings/keys>.
+2. Click **New SSH key**.
+3. Give it a title (e.g. the hostname of this machine).
+4. Paste the entire output of the `cat` command — starting with `ssh-ed25519` and ending with your email.
+5. Save.
 
-- `~/.sysbackup/.push_pending` is created (empty file).
-- A `notify-send` notification is fired.
-- The script exits `0` — *not* an error — because the commit is safely stored locally.
+### 5. Verify GitHub access
 
-On the next run, if `.push_pending` exists, the script will still push normally — the marker is only used to decide whether to log the "cleared pending push" message and delete the file on success.
+Before you go any further, prove that the key works:
 
-### Logging
+```fish
+ssh -T git@github.com
+```
 
-Every run appends to `~/.sysbackup/backup.log`, which is itself tracked by Git (so you get history of the log). Log levels:
+You should see something like:
 
-| Level | stdout | Log file | Colour |
-|---|---|---|---|
-| `STEP` | yes | yes | cyan |
-| `OK` | yes | yes | green |
-| `WARN` | yes | yes | yellow |
-| `ERROR` | yes | yes | red |
-| `INFO` | no | yes | — |
+```
+Hi <username>! You've successfully authenticated, but GitHub does not provide shell access.
+```
 
-Colours are suppressed when stdout is not a TTY (e.g. when run from a cron job or piped to a file).
+If you see `Permission denied (publickey)`, stop and fix this. Every push in the rest of this README depends on it. Common causes:
 
-### Notifications
+- The key wasn't added to `ssh-agent`: run `ssh-add ~/.ssh/id_ed25519` again.
+- You pasted the **private** key (the file *without* `.pub`) into GitHub. Paste the `.pub` one.
+- You have an old key in `~/.ssh/config` pointing `github.com` somewhere else.
 
-`notify-send` is invoked on rebuild failure, sync failure, secret detection, rebase conflict, and push failure. It is skipped automatically when `$DISPLAY` and `$WAYLAND_DISPLAY` are both unset — i.e. over SSH or in a headless session.
+### 6. (Optional) Install gitleaks
+
+The backup script scans staged changes for secrets before committing. If `gitleaks` is not installed, the scan is skipped with a warning.
+
+You have two options:
+
+- **Skip it for now.** The script won't fail. Install it later.
+- **Install it via this flake's config.** It's already in `environment.systemPackages` in `configuration.nix`, so a rebuild picks it up. Or install it ad-hoc:
+  ```fish
+  nix profile install nixpkgs#gitleaks
+  ```
 
 ---
 
-## What Gets Backed Up
+## Linking `/etc/nixos` to `~/.config/nixos`
 
-The backup contains **exactly** these paths, and nothing else:
+By default NixOS expects the flake at `/etc/nixos`, which is **owned by root**. That means every time you want to edit `configuration.nix`, you have to do it through `sudo nano` or similar. I do not want to edit my NixOS config as root — I want to use Zed, VS Code, or whatever editor I feel like, with my own keybindings and my own user permissions.
 
-| Path in backup | Source | Contains |
-|---|---|---|
-| `nixos/` | `~/.config/nixos/` | The entire flake (minus `.git`) |
-| `config/mpv/` | `~/.config/mpv/` | MPV config and downloaded scripts |
-| `config/hypr/` | `~/.config/hypr/` | Hyprland config, monitors, keybinds |
-| `config/fish/` | `~/.config/fish/` | Fish config, functions, completions |
-| `local/bin/` | `~/.local/bin/` | Personal executable scripts (including `rebuild-sync.fish` itself) |
-| `backup.log` | — | Append-only run log |
-| `.gitignore` | — | Backup repo's own ignore file |
+The fix is to move `/etc/nixos` into my home directory and leave a symlink behind. NixOS will still find it (because `/etc/nixos` resolves through the symlink), and I get to edit the files as my normal user.
 
-It does **not** contain:
+**Run these three commands exactly once, on a machine that already has `/etc/nixos`**:
 
-- `~/.ssh/`, `~/.gnupg/`, `~/.config/sops/` — private keys and secrets are intentionally excluded.
+```fish
+sudo mv /etc/nixos ~/.config/nixos
+sudo chown -R $USER:users ~/.config/nixos
+sudo ln -s ~/.config/nixos /etc/nixos
+```
+
+What each command does:
+
+| Command | What it does |
+|---|---|
+| `sudo mv /etc/nixos ~/.config/nixos` | Moves the flake out of `/etc` and into your home directory. |
+| `sudo chown -R $USER:users ~/.config/nixos` | Hands ownership to you, so you can edit without `sudo`. |
+| `sudo ln -s ~/.config/nixos /etc/nixos` | Leaves a symlink behind so `nixos-rebuild` (and any tool expecting `/etc/nixos`) still finds it. |
+
+Verify it worked:
+
+```fish
+ls -la /etc/nixos
+# Should print: /etc/nixos -> /home/<you>/.config/nixos
+
+ls ~/.config/nixos
+# Should list: configuration.nix  flake.lock  flake.nix  hardware-configuration.nix
+```
+
+From this point on, **`~/.config/nixos` is the canonical path** and `/etc/nixos` is just a compatibility symlink. Every command in the rest of this README uses `~/.config/nixos`.
+
+> **Note for readers on a fresh install:** if you're setting up on a brand-new machine, run these commands *after* you've installed NixOS but *before* you clone this repository, so the cloned files land in the right place. Or clone first, then copy the files into `~/.config/nixos` and symlink. Both work.
+
+---
+
+## What this repository is
+
+This GitHub repository is the **off-machine backup** of my NixOS configuration and the dotfiles I care about. Everything in it is put there automatically by a single script, `rebuild-sync`, which I run whenever I change something.
+
+The repository serves **two purposes at once**:
+
+1. **It is the backup.** Every time I run the script, it snapshots my flake, my fish config, my Hyprland config, my MPV config, and my `~/.local/bin/` into this repo, commits, and pushes. If my SSD dies tomorrow, I lose nothing important.
+2. **It is the source of truth for restore.** On a fresh machine, I clone this repo, run a handful of copy commands to put things back where they belong, and I'm home.
+
+The flake itself — `configuration.nix`, `flake.nix`, `hardware-configuration.nix` — lives at `~/.config/nixos` (symlinked from `/etc/nixos`), which is *also* a Git repository in its own right. The backup repo captures a *copy* of that flake under the `nixos/` subdirectory, but strips out `.git/` so the two histories stay separate. That's why you'll see `nixos/` inside this repo without its own Git metadata.
+
+---
+
+## Repository layout
+
+Cloning this repository gives you exactly this:
+
+```
+NixOS/                           # The backup repo root
+├── README.md                    # This file
+├── config/                      # Mirrors of ~/.config/
+│   ├── fish/                    # Fish shell: config.fish, functions, completions
+│   ├── hypr/                    # Hyprland: hyprland.lua + dms/ config tree
+│   └── mpv/                     # MPV: mpv.conf, input.conf, scripts, fonts
+├── local/
+│   └── bin/                     # Mirrors of ~/.local/bin/
+│       ├── chorus               # A small GTK app I wrote
+│       ├── data/                # Its source assets (icons, po, screenshots)
+│       ├── rebuild-sync         # The backup script itself
+│       └── remux.py             # A video remux helper
+└── nixos/                       # Mirror of ~/.config/nixos/ (minus .git/)
+    ├── configuration.nix
+    ├── flake.lock
+    ├── flake.nix
+    └── hardware-configuration.nix
+```
+
+Everything is laid out to mirror the **original absolute paths** with `~` replaced by the repo root. So `~/NixOS/config/fish/config.fish` corresponds to `~/.config/fish/config.fish`. That one-to-one mapping is what makes restore a series of simple `cp -a` commands.
+
+The backup script lives at `local/bin/rebuild-sync` inside this repo, and it backs itself up — so it survives any restore.
+
+---
+
+## The `rebuild-sync` script
+
+`rebuild-sync` is the only thing you need to remember. It's a Fish script that does five things in strict order, and stops the moment any of them fails.
+
+### What it does
+
+1. **Rebuilds NixOS.** Runs `nixos-rebuild switch` against `~/.config/nixos`. If the rebuild fails, nothing else runs and no backup is made. This is deliberate: a snapshot taken after a broken rebuild is worse than no snapshot.
+2. **Rsyncs the dotfiles.** Copies `~/.config/{fish,hypr,mpv}`, `~/.local/bin`, and `~/.config/nixos` into the backup repo, using `--delete-after` so that files you removed from source disappear from the backup on the next run, and `--backup --backup-dir` so that anything overwritten or deleted is preserved in a timestamped trash directory first.
+3. **Scans for secrets.** Runs `gitleaks` against the exact staged diff — i.e. the exact contents of the next commit. If it finds anything that looks like an API key, password, or token, the script aborts and nothing is committed.
+4. **Commits.** If there are changes, commits them with a structured message containing the hostname, NixOS version, timestamp, and file count.
+5. **Pulls, rebases, and pushes.** Rebases onto the remote, then pushes with up to three retries and exponential backoff. If all retries fail, it writes a `.push_pending` marker and leaves the commit local — the next run will retry.
+
+### How it avoids running twice at once
+
+At startup, the script uses `flock` to grab an exclusive lock on `~/.sysbackup/.lock`. If another instance is already running, it exits immediately. The lock is released automatically by the kernel when the process dies, even on `SIGKILL`, so there is no such thing as a stale lock.
+
+### Where it puts things
+
+| Path | What it is |
+|---|---|
+| `~/.sysbackup/` | The backup repo. This is what gets pushed to GitHub. |
+| `~/.sysbackup/backup.log` | Append-only log of every run. Tracked by Git, so you get history. |
+| `~/.sysbackup/.trash/YYYYMMDD-HHMMSS-XXXXXX/` | Per-run trash for anything the rsync overwrote or deleted. Gitignored. |
+| `~/.sysbackup/.push_pending` | Marker written when a push fails. Gitignored. |
+
+### Invoking it
+
+I have a fish function called `nixbuild` that wraps the script so I can just type `nixbuild` from anywhere. If you don't want to set that up, run the script directly:
+
+```fish
+~/.local/bin/rebuild-sync
+```
+
+There is also a `nixupdate` fish function, which does `nix flake update` in `~/.config/nixos` and then calls `nixbuild`. Use it when you want to pull in updates from upstream.
+
+---
+
+## What gets backed up
+
+Exactly these paths, and nothing else:
+
+| In the backup | From the live system |
+|---|---|
+| `config/fish/` | `~/.config/fish/` |
+| `config/hypr/` | `~/.config/hypr/` |
+| `config/mpv/` | `~/.config/mpv/` |
+| `local/bin/` | `~/.local/bin/` |
+| `nixos/` | `~/.config/nixos/` (with `.git/` excluded) |
+| `backup.log` | Generated by the script |
+
+Deliberately **excluded**:
+
+- `~/.ssh/`, `~/.gnupg/`, `~/.config/sops/` — private keys, by design.
 - `~/.cache/`, `~/.local/share/`, `~/.local/state/` — regenerable state.
-- The Nix store itself — that is Nix's job, via the flake and its lock file.
-- `~/.config/nixos/.git` — the flake's Git history stays with the flake.
+- The Nix store — that's Nix's job, via the flake.
+- `.direnv/`, `result` — build artifacts.
 
-> **If you want to add a path to the backup**, edit the `syncs` list in `rebuild-sync.fish`. See [Configuration Reference](#configuration-reference).
+If you want to back up a path I haven't included, edit the `syncs` list inside `local/bin/rebuild-sync` and add it. The list is a flat sequence of source–destination pairs, so adding an entry is a two-line diff.
 
 ---
 
-## First-Time Installation
+## Setting up on a machine you own
 
-This section assumes you are on a fresh NixOS install with a working `nixos-rebuild` and a functioning network.
+This is the sequence I ran on the machine that would *become* the pusher. Do this after [Prerequisites](#prerequisites) and after you've [symlinked `/etc/nixos`](#linking-etcnixos-to-confignixos).
 
-### 1. Clone the flake
+### 1. Clone this repository into `~/.sysbackup`
+
+I keep the backup repo at `~/.sysbackup` because that's what the script expects. Clone yours there:
 
 ```fish
-git clone <your-remote> ~/.config/nixos
-cd ~/.config/nixos
+git clone git@github.com:LadyHawk2006/NixOS.git ~/.sysbackup
 ```
 
-If you already have `~/.config/nixos/` from the installer, move it aside first.
+Replace the URL with your own repo if you forked this.
 
-### 2. Verify the flake evaluates
+### 2. Make sure your `~/.config/nixos` matches the flake in the backup
+
+If you're on a machine that already has its own `~/.config/nixos`, compare it against `~/.sysbackup/nixos/`. They should be near-identical. If your local flake is authoritative, just leave it — the next `rebuild-sync` run will overwrite the backup with your version.
+
+If you're on a machine whose flake is empty or wrong and you want the backup's version:
 
 ```fish
+cp -a ~/.sysbackup/nixos/. ~/.config/nixos/
+```
+
+### 3. Restore the dotfiles (only if the machine is empty)
+
+Skip this if you're on your usual machine and just want the backup to start working.
+
+```fish
+cp -a ~/.sysbackup/config/fish ~/.config/
+cp -a ~/.sysbackup/config/hypr ~/.config/
+cp -a ~/.sysbackup/config/mpv  ~/.config/
+cp -a ~/.sysbackup/local/bin/. ~/.local/bin/
+chmod +x ~/.local/bin/rebuild-sync
+```
+
+### 4. Run it
+
+```fish
+~/.local/bin/rebuild-sync
+```
+
+The first run will probably report a small number of changes, commit them, and push. If it's the very first push to a brand-new repository, expect a single large commit.
+
+---
+
+## Restoring on a brand-new machine
+
+This is the section you read when your old laptop is in a thousand pieces and you're staring at a freshly-installed NixOS with nothing but a terminal and a network cable. Take it slowly; it's not hard, but every step matters.
+
+### Step 1 — Install NixOS
+
+Do a plain install. The graphical installer or the terminal installer, whichever you prefer. Minimum viable state:
+
+- NixOS boots to a usable shell.
+- You have a user account in the `wheel` group.
+- You have network.
+
+Set the hostname to **`nixos`** during install, or plan to pass `--flake ...#nixos` explicitly on every rebuild. The flake defines exactly one host called `nixos`; if your running hostname is something else, `nixos-rebuild` will refuse to find it.
+
+### Step 2 — Prepare the minimum tooling
+
+You need `git` and `openssh`. On a minimal install, drop into a temp shell:
+
+```fish
+nix-shell -p git openssh
+```
+
+On a full install they're already present.
+
+### Step 3 — Configure Git and GitHub
+
+Redo [Prerequisites 3, 4, and 5](#3-configure-your-git-identity) on this new machine. You need:
+
+- `git config --global user.name` and `user.email` set.
+- A fresh SSH key generated (`ssh-keygen -t ed25519 -C "you@example.com"`) — you do **not** want to reuse the old one, since the whole point of a fresh machine is starting fresh keys.
+- The public key added to your GitHub account at <https://github.com/settings/keys>.
+- `ssh -T git@github.com` returns `Hi <you>!`.
+
+If the old machine is still accessible, you could copy `~/.ssh/id_ed25519` and `id_ed25519.pub` over instead. I prefer not to — a new machine should have its own keys, so you can revoke individual keys if a single machine is compromised.
+
+### Step 4 — Clone the backup repository
+
+```fish
+git clone git@github.com:LadyHawk2006/NixOS.git ~/.sysbackup
+```
+
+If the machine's disk is small and you don't want the full backup history yet, you can shallow-clone:
+
+```fish
+git clone --depth 1 git@github.com:LadyHawk2006/NixOS.git ~/.sysbackup
+```
+
+You can always `git fetch --unshallow` later.
+
+### Step 5 — Reconstruct `~/.config/nixos` and symlink `/etc/nixos`
+
+The backup contains the flake under `~/.sysbackup/nixos/`. We want it at `~/.config/nixos` with `/etc/nixos` symlinked to it.
+
+First, check what's currently at `/etc/nixos`:
+
+```fish
+ls -la /etc/nixos
+```
+
+If the installer put files there, move them aside (do not delete — you might want to diff them later):
+
+```fish
+sudo mv /etc/nixos /etc/nixos.installer-backup
+```
+
+Now create `~/.config/nixos` and copy the flake in:
+
+```fish
+mkdir -p ~/.config/nixos
+cp -a ~/.sysbackup/nixos/. ~/.config/nixos/
+```
+
+Verify the contents:
+
+```fish
+ls ~/.config/nixos
+# Should list: configuration.nix  flake.lock  flake.nix  hardware-configuration.nix
+```
+
+Now symlink:
+
+```fish
+sudo ln -s ~/.config/nixos /etc/nixos
+```
+
+Confirm:
+
+```fish
+ls -la /etc/nixos
+# Should print: /etc/nixos -> /home/<you>/.config/nixos
+```
+
+### Step 6 — Reconstruct the dotfiles
+
+Now the important part. The backup stores files at their original **relative** paths, so restoration is a series of `cp -a` commands. The `-a` flag preserves permissions, timestamps, and symlinks — do not omit it.
+
+**Fish shell** — restore `~/.config/fish`:
+
+```fish
+mkdir -p ~/.config
+cp -a ~/.sysbackup/config/fish ~/.config/
+```
+
+This brings back `config.fish`, `fish_variables`, and the `functions/` and `completions/` subdirectories. Note that `fish_variables` contains some shell state — you may want to inspect it before overwriting an existing one.
+
+**Hyprland** — restore `~/.config/hypr`:
+
+```fish
+cp -a ~/.sysbackup/config/hypr ~/.config/
+```
+
+This brings back `hyprland.lua` and the `dms/` subdirectory with all the module configs (binds, colors, layout, cursor, outputs, windowrules, etc.).
+
+**MPV** — restore `~/.config/mpv`:
+
+```fish
+cp -a ~/.sysbackup/config/mpv ~/.config/
+```
+
+This brings back `mpv.conf`, `input.conf`, the `scripts/` folder (containing `modernz.lua`), and the `fonts/` folder (`modernz-icons.ttf`).
+
+**Personal binaries and scripts** — restore `~/.local/bin`:
+
+```fish
+mkdir -p ~/.local
+cp -a ~/.sysbackup/local/bin/. ~/.local/bin/
+```
+
+Notice the `.` at the end of the source — `local/bin/.` means "the *contents* of `local/bin`", which is what you want. Without it, `cp -a source dest` would create `~/.local/bin/bin/` if `~/.local/bin` already existed.
+
+After copying, make sure the executables are, well, executable:
+
+```fish
+chmod +x ~/.local/bin/*
+```
+
+And specifically confirm the backup script is runnable:
+
+```fish
+chmod +x ~/.local/bin/rebuild-sync
+~/.local/bin/rebuild-sync --help 2>/dev/null || echo "script is not a --help script, that's fine"
+```
+
+The second command is just a smoke test; it will print an error about `--help` if the script isn't set up to accept it, which is expected.
+
+### Step 7 — Verify the flake is intact
+
+Before rebuilding, make sure the flake evaluates cleanly:
+
+```fish
+cd ~/.config/nixos
 nix flake check
 nix eval .#nixosConfigurations --apply builtins.attrNames
 ```
 
-The second command should print `[ "nixos" ]`. If it prints anything else, either the flake defines a different hostname or you are on a different machine — see [Troubleshooting](#troubleshooting).
+The second command should print `[ "nixos" ]`. If it prints a different name, the flake's hostname doesn't match your expectation — check `flake.nix`.
 
-### 3. Build once, manually
+### Step 8 — Deal with `hardware-configuration.nix`
+
+The backup contains the `hardware-configuration.nix` from **my** machine. That file contains disk UUIDs, kernel modules for my specific hardware, and possibly filesystem definitions that will not match yours. If you build with it, the rebuild will very likely succeed but the system may not boot on next restart, because the bootloader will be configured to look for filesystems that don't exist.
+
+**You must regenerate this file for your hardware.** Do so *before* the first rebuild:
+
+```fish
+sudo nixos-generate-config --show-hardware-config > /tmp/hw-new.nix
+```
+
+Then open `~/.config/nixos/hardware-configuration.nix` in an editor and compare it against `/tmp/hw-new.nix`. Merge in the differences for:
+
+- `fileSystems."/"` — disk and partition UUIDs
+- `fileSystems."/boot"` — ESP mount
+- `swapDevices` — if any
+- `boot.initrd.availableKernelModules` and `boot.kernelModules` — chipset-specific drivers
+- `hardware.cpu.*` — CPU microcode and instruction-set variants
+
+If you don't want to diff manually, the simplest path is:
+
+```fish
+cp ~/.config/nixos/hardware-configuration.nix ~/.config/nixos/hardware-configuration.nix.original
+cp /tmp/hw-new.nix ~/.config/nixos/hardware-configuration.nix
+```
+
+…and then re-add any custom bits from `.original` (e.g. extra mounts) by hand.
+
+> **A warning about the CachyOS kernel.** My config uses `linuxPackages-cachyos-latest-x86_64-v3`, which requires an Intel Haswell / AMD Excavator CPU or newer (AVX2, BMI2, FMA). If your new machine is older, change the `boot.kernelPackages` line in `configuration.nix` to `pkgs.linuxPackages` before rebuilding — otherwise the kernel will refuse to boot.
+
+### Step 9 — First rebuild
+
+Do this **manually**, not via `rebuild-sync`, for the first run. The reason is that `rebuild-sync` asks the running hostname for the flake attribute, and on a fresh install the running hostname may not yet be `nixos`.
 
 ```fish
 sudo nixos-rebuild switch --flake ~/.config/nixos#nixos
 ```
 
-This is the one time you should bypass `rebuild-sync.fish` — because the script asks `hostname` for the flake attribute, and on a fresh install the running hostname may not yet be `nixos`. Once this command succeeds and you reboot, `hostname` will match.
+Watch the output. If it fails, read the error carefully — nine times out of ten it's a `hardware-configuration.nix` mismatch, a wrong kernel variant, or a package that no longer exists in the current nixpkgs. Fix, re-run.
 
-### 4. Install the script
+If it succeeds, reboot. On the next boot, `hostname` will return `nixos` (because `networking.hostName = "nixos"` is now active), and `rebuild-sync` will find the flake attribute on its own.
 
-```fish
-mkdir -p ~/.local/bin
-cp /path/to/rebuild-sync.fish ~/.local/bin/
-chmod +x ~/.local/bin/rebuild-sync.fish
-```
+### Step 10 — Re-authenticate everything the backup doesn't carry
 
-Ensure `~/.local/bin` is on `$PATH` (it is by default in NixOS for interactive shells if the directory exists).
+The backup deliberately does not contain secrets or session state. After the first rebuild, log back into the things that matter:
 
-### 5. Initialize the backup repo
+| Service | How to re-authenticate |
+|---|---|
+| Tailscale | `sudo tailscale up` — will open a browser for login |
+| Steam | Launch Steam, log in, and re-add any 2FA |
+| Firefox | Sign into Firefox Sync or copy profile manually |
+| Git remotes | If you use HTTPS elsewhere, you may need new PATs |
+| Samba | `sudo smbpasswd -a shadrack` — the password is not stored |
+| SSH to other machines | Generate new keys, add public keys to servers |
+| GPG | Restore from an offline backup if you used it |
 
-```fish
-mkdir -p ~/.sysbackup
-cd ~/.sysbackup
-git init
-git remote add origin <your-backup-remote>
-git branch -M main
-```
+### Step 11 — Run `rebuild-sync` for the first time
 
-### 6. Dry-run the rsync
-
-Before trusting the script, verify that the `--delete-after` on `~/.config/nixos/` won't remove anything you care about. Add `--dry-run` to `rsync_opts` temporarily:
+Now that `hostname` matches, run the script:
 
 ```fish
-set -l rsync_opts -a --delete-after --stats --backup --backup-dir=$run_trash \
-                  --exclude=.git --exclude=.direnv/ --exclude=result \
-                  --dry-run
+~/.local/bin/rebuild-sync
 ```
 
-Run once, inspect the output, then remove `--dry-run`.
+It should:
 
-### 7. Run it for real
+1. Rebuild (this time a no-op, since you just built).
+2. Rsync the dotfiles into `~/.sysbackup` — expect a small number of changes, maybe zero.
+3. Gitleaks scan — expect clean.
+4. Commit — if there are changes.
+5. Push — should succeed now that SSH keys are set up.
 
-```fish
-rebuild-sync.fish
-```
+If the push succeeds, you're done. If it fails, read the log at `~/.sysbackup/backup.log` and work through [Troubleshooting](#troubleshooting).
 
-The first run will commit and push the initial snapshot. Expect a large initial commit.
+### Step 12 — Restore anything else you want
 
-### 8. Confirm the remote
-
-```fish
-git -C ~/.sysbackup log --oneline -5
-git -C ~/.sysbackup status
-```
+The backup is deliberately minimal. If you had other things (SSH keys, GPG keys, code projects, media), restore them from wherever you kept them.
 
 ---
 
-## Restoring on a New Machine
+## Day-to-day usage
 
-This is the section to read when your old machine is gone and you are staring at a fresh NixOS USB installer.
-
-### Phase A — Bootstrap the OS
-
-1. **Install NixOS.** A minimal install is sufficient. You do not need the graphical installer; the config here provides everything.
-2. **Set the hostname to `nixos`** during installation, or plan to pass `--flake ...#nixos` explicitly.
-3. **Ensure network access.** `curl` and `git` are available in the installer environment.
-
-### Phase B — Clone and Build
+The workflow is one command, every time I change something:
 
 ```fish
-git clone <your-remote> ~/.config/nixos
-sudo nixos-rebuild switch --flake ~/.config/nixos#nixos
+nixbuild
 ```
 
-If the hardware is different (different GPU, different disk layout), the flake will build but `hardware-configuration.nix` will not match. You will need to regenerate it:
+That's it. It rebuilds, backs up, scans, commits, and pushes.
+
+If I want to update the flake inputs first (to pick up new nixpkgs releases), I use:
 
 ```fish
-sudo nixos-generate-config --show-hardware-config > /tmp/hw.nix
-# Compare with ~/.config/nixos/hardware-configuration.nix
-# Merge in the disk/filesystem sections manually.
+nixupdate
 ```
 
-Do not blindly overwrite the existing file — the installer's version may reference devices that no longer exist, and the flake's version may have customisations (e.g. extra mounts) that the installer will not regenerate.
-
-### Phase C — Restore the Backup Repo
-
-```fish
-git clone <your-backup-remote> ~/.sysbackup
-```
-
-If the remote is private and you are using SSH keys, generate a new key on the new machine, add it to the remote, and clone. If the remote is gone but you have a local copy on a USB drive:
-
-```fish
-cp -a /run/media/usb/sysbackup ~/.sysbackup
-```
-
-### Phase D — Rehydrate Dotfiles
-
-The backup stores files at their *original* relative paths, so restoration is a targeted copy. **Do not** copy the entire backup into your home directory — it contains `nixos/`, `backup.log`, and `.git/`, which you do not want as top-level entries.
-
-Restore each path manually:
-
-```fish
-mkdir -p ~/.config
-cp -a ~/.sysbackup/config/mpv    ~/.config/
-cp -a ~/.sysbackup/config/hypr   ~/.config/
-cp -a ~/.sysbackup/config/fish   ~/.config/
-
-mkdir -p ~/.local
-cp -a ~/.sysbackup/local/bin     ~/.local/
-```
-
-The flake itself is already in place from Phase B — do **not** copy `~/.sysbackup/nixos/` over it, because the backup copy has no `.git/` and you would lose history.
-
-### Phase E — Reattach the Script
-
-```fish
-chmod +x ~/.local/bin/rebuild-sync.fish
-```
-
-Confirm `~/.local/bin/rebuild-sync.fish` is on `$PATH`:
-
-```fish
-type -a rebuild-sync
-```
-
-### Phase F — Fix the Remote
-
-If the backup remote's URL changed, update it:
-
-```fish
-git -C ~/.sysbackup remote set-url origin <new-url>
-```
-
-### Phase G — First Run
-
-```fish
-rebuild-sync.fish
-```
-
-Expect it to find no changes (the freshly cloned backup matches your restored dotfiles) and either skip the commit or create an empty one depending on Git's configuration. The push will confirm connectivity.
-
-### Phase H — Restore Anything Not in the Backup
-
-The backup deliberately omits secrets. After restore, you will need to:
-
-- Regenerate `~/.ssh/id_*` and add the public keys to your remotes and servers.
-- Restore any GPG keys from an offline backup.
-- Re-login to Tailscale (`sudo tailscale up`).
-- Re-authenticate Steam, Firefox, and any Flatpak apps.
-- Restore Samba user passwords: `sudo smbpasswd -a shadrack`.
-
----
-
-## Day-to-Day Usage
-
-### The normal workflow
-
-1. Edit a file — either in the flake (`~/.config/nixos/`) or in a dotfile path.
-2. If you changed a `.nix` file, `git add` it in the flake repo.
-3. Run `rebuild-sync.fish`.
-4. Watch the output. Green means success.
-
-That is the whole workflow. There is no separate "backup" step and no separate "commit" step.
+…which is `nix flake update` followed by `nixbuild`.
 
 ### Recovering a deleted file
 
+The rsync uses `--backup --backup-dir`, so every file it deletes or overwrites is first saved into a timestamped trash directory. Look there:
+
 ```fish
 ls -1 ~/.sysbackup/.trash/ | tail -5
-# Pick a timestamp, then:
+```
+
+Pick the timestamp that's likely to contain the file you want, then browse:
+
+```fish
 find ~/.sysbackup/.trash/20260920-143022-XXXXXX -type f
 ```
 
-Copy the file out and place it where it belongs. The relative path inside the trash directory mirrors the path inside the backup's destination — so `~/.sysbackup/.trash/<ts>/config/hypr/hyprland.conf` corresponds to `~/.sysbackup/config/hypr/hyprland.conf`.
+The relative paths inside the trash directory mirror the backup's own layout. Copy the file out and put it back where it belongs.
 
-### Rolling back a dotfile change
+### Rolling back a single file
 
-Since the backup is a Git repo, you can simply:
+Because the backup is a Git repo, you can also just use `git`:
 
 ```fish
-git -C ~/.sysbackup log --oneline -- config/hypr/hyprland.conf
-git -C ~/.sysbackup show <commit>:config/hypr/hyprland.conf > /tmp/old
-# Copy /tmp/old to ~/.config/hypr/hyprland.conf
+git -C ~/.sysbackup log --oneline -- config/hypr/hyprland.lua
+git -C ~/.sysbackup show <commit>:config/hypr/hyprland.lua > /tmp/old.lua
 ```
 
-Or, for a full-file restore:
+Or check out a specific version into the working tree:
 
 ```fish
-git -C ~/.sysbackup checkout <commit> -- config/hypr/hyprland.conf
-cp ~/.sysbackup/config/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
+git -C ~/.sysbackup checkout <commit> -- config/hypr/hyprland.lua
+cp ~/.sysbackup/config/hypr/hyprland.lua ~/.config/hypr/hyprland.lua
 ```
 
 ### Rolling back a system change
 
-```fish
-git -C ~/.config/nixos log --oneline
-git -C ~/.config/nixos revert <bad-commit>
-sudo nixos-rebuild switch --flake ~/.config/nixos#nixos
-```
-
-Or use NixOS's built-in generation rollback:
+NixOS keeps every system generation, so you can always boot the previous one:
 
 ```fish
 sudo nixos-rebuild switch --rollback
 ```
 
-This switches to the previous generation without touching Git — useful when the broken change is not yet committed.
+Or, if you want to actually revert the config:
 
-### Cleaning old trash
+```fish
+cd ~/.config/nixos
+git log --oneline
+git revert <bad-commit>
+sudo nixos-rebuild switch --flake ~/.config/nixos#nixos
+```
 
-`~/.sysbackup/.trash/` grows unbounded. Prune it periodically:
+### Pruning the trash
+
+The trash directory grows over time. Prune anything older than 30 days:
 
 ```fish
 find ~/.sysbackup/.trash -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
 ```
 
-This removes trash directories older than 30 days. Adjust to taste. The trash is gitignored, so this does not affect history — but it does mean you lose recoverability for those older runs.
+### Adding a path to the backup
 
-### Amending the sync list
-
-Edit the `syncs` list in `rebuild-sync.fish`:
+Edit the `syncs` list inside `~/.local/bin/rebuild-sync`:
 
 ```fish
 set -l syncs \
@@ -662,78 +653,83 @@ set -l syncs \
     $HOME/.local/bin/                     $BACKUP_DIR/local/bin/
 ```
 
-The list is flat pairs of source–destination. The script validates that the list has an even number of entries before proceeding.
+Add a new source–destination pair, keeping the list even-length. The script validates this at startup and will refuse to run if you get it wrong.
 
 ---
 
-## Configuration Reference
+## What's actually in the Nix config
 
-### Environment variables
+I won't walk you through every line — the NixOS wiki does that better than I can. Instead, here's a map of which parts of `configuration.nix` do what, with links to the relevant upstream docs.
 
-| Variable | Effect |
-|---|---|
-| `NIXBUILD_FLAKE_HOST` | Overrides the flake attribute used for `nixos-rebuild`. Set this if `hostname` does not match the attr name. |
-| `NIXBUILD_LOCKED` | Set internally by the script when re-exec'ing under flock. Do not set manually. |
+### System identity
+Defines `hostname = nixos`, user `shadrack`, time zone `Africa/Nairobi`, and `stateVersion = "26.05"`.
+→ [NixOS Wiki: User management](https://wiki.nixos.org/wiki/User_management), [NixOS Wiki: Timezone](https://wiki.nixos.org/wiki/Timezone)
 
-### Script constants
+### Boot & kernel
+GRUB on EFI with the NixOS GRUB2 theme. CachyOS kernel via the [`nix-cachyos-kernel`](https://github.com/xddxdd/nix-cachyos-kernel) flake input. Sysctl IP-forwarding enabled for Tailscale subnet routing.
+→ [NixOS Wiki: Bootloader](https://wiki.nixos.org/wiki/Bootloader), [NixOS Wiki: Linux kernel](https://wiki.nixos.org/wiki/Linux_kernel), [NixOS Wiki: Networking](https://wiki.nixos.org/wiki/Networking)
 
-All defined at the top of `rebuild-sync.fish`:
+### Graphics
+Intel graphics, 32-bit enabled (required for Proton / DirectX translation), with `intel-media-driver`, `intel-vaapi-driver`, and `libvdpau-va-gl`.
+→ [NixOS Wiki: Accelerated video playback](https://wiki.nixos.org/wiki/Accelerated_Video_Playback)
 
-| Constant | Default | Meaning |
-|---|---|---|
-| `BACKUP_DIR` | `$HOME/.sysbackup` | Root of the backup repo. |
-| `LOG_FILE` | `$BACKUP_DIR/backup.log` | Append-only log. |
-| `TRASH_DIR` | `$BACKUP_DIR/.trash` | Parent of per-run trash directories. |
-| `PENDING_FILE` | `$BACKUP_DIR/.push_pending` | Marker written when a push fails. |
-| `LOCK_FILE` | `$BACKUP_DIR/.lock` | flock target. |
-| `REMOTE` | `origin` | Git remote name. |
-| `BRANCH` | `main` | Branch to pull, rebase onto, and push. |
-| `PUSH_RETRIES` | `3` | Number of push attempts before giving up. |
-| `FLAKE_DIR` | `$HOME/.config/nixos` | The flake repo. |
+### Networking & firewall
+NetworkManager, Tailscale, and a firewall that opens Steam Remote Play (`30000–50000/TCP`), LocalSend (`53317`), and Tailscale (`41641/UDP`).
+→ [NixOS Wiki: Networking](https://wiki.nixos.org/wiki/Networking), [NixOS Wiki: Firewall](https://wiki.nixos.org/wiki/Firewall), [NixOS Wiki: Tailscale](https://wiki.nixos.org/wiki/Tailscale)
 
-### Flake inputs
+### Desktop environment
+Hyprland on Wayland, with `uwsm` for session management and `dms-shell` / `dms-greeter` for the shell and login screen. XWayland enabled for game compatibility.
+→ [NixOS Wiki: Hyprland](https://wiki.nixos.org/wiki/Hyprland), [UWSM](https://github.com/Vladimir-csp/uwsm)
 
-| Input | URL | Purpose |
-|---|---|---|
-| `nixpkgs` | `github:nixos/nixpkgs/nixos-unstable` | Base package set. |
-| `nix-cachyos-kernel` | `github:xddxdd/nix-cachyos-kernel/release` | CachyOS kernel + pinned overlay. |
+### Gaming
+Steam with Remote Play, dedicated-server, and LAN transfer firewalls open, plus Proton-GE via `extraCompatPackages`. `gamemode` enabled system-wide.
+→ [NixOS Wiki: Steam](https://wiki.nixos.org/wiki/Steam)
 
-To update all inputs:
+### Virtualization
+Waydroid using the `waydroid-nftables` variant, with the helper package and mount service wired up.
+→ [NixOS Wiki: Waydroid](https://wiki.nixos.org/wiki/Waydroid)
 
-```fish
-cd ~/.config/nixos
-nix flake update
-sudo nixos-rebuild switch --flake .#nixos
-```
+### File sharing
+Samba, read-only shares for `~/Videos` and `~/Music`, authentication required.
+→ [NixOS Wiki: Samba](https://wiki.nixos.org/wiki/Samba)
 
-To update a single input:
+### Shell, editor, terminal
+`fish` as the login shell, `ghostty` as the terminal, `zed-editor` as the GUI editor, `nil` and `nixd` as Nix LSPs.
+→ [NixOS Wiki: Fish](https://wiki.nixos.org/wiki/Fish)
 
-```fish
-nix flake lock --update-input nix-cachyos-kernel
-```
+### Themes and cursor
+`adwaita-icon-theme`, `breeze-hacked-cursor-theme`, `candy-icons`, and Qt theme engines (`qt5ct`, `qt6ct`).
+→ [NixOS Wiki: Fonts](https://wiki.nixos.org/wiki/Fonts)
+
+### MPV
+MPV with the `mpris`, `sponsorblock`, `quality-menu`, `mpv-playlistmanager`, and `thumbfast` scripts pre-baked via override.
+→ [NixOS Wiki: MPV](https://wiki.nixos.org/wiki/MPV)
+
+If you want to change something, edit `configuration.nix` and run `nixbuild`. If you want to remove a whole section, delete it — nothing else depends on it except in the obvious ways (remove Steam and its firewall rules become redundant, etc.).
 
 ---
 
-## Security Model
+## Security model
 
-The threat model is: *I have a private Git remote, and I do not want secrets to reach it.*
+I have a **private** GitHub repo, and I do not want secrets reaching it. The controls in place:
 
-| Control | What it protects against |
+| Control | Protects against |
 |---|---|
-| `gitleaks git --staged` | API keys, tokens, passwords accidentally written to a tracked file. |
-| `--exclude=.git` in rsync | Nested Git repos being versioned as gitlinks. |
+| `gitleaks git --staged` | API keys, tokens, passwords accidentally committed. |
+| `--exclude=.git` in rsync | Nested git repos being versioned as gitlinks. |
 | `.gitignore` bootstrap | Runtime state (`.lock`, `.push_pending`, `.trash/`) leaking into history. |
-| Explicit sync list | Arbitrary home directory contents being captured. The list is short and auditable. |
+| Explicit `syncs` list | Arbitrary home-directory contents being captured. |
 | No secrets in the flake | `configuration.nix` contains no passwords or keys. |
-| `flock -n` | Two concurrent runs interleaving writes to the backup. |
+| `flock -n` | Two concurrent runs interleaving writes. |
 
 **What is *not* protected:**
 
-- The remote. If the remote is compromised, the attacker has everything in the backup. Do not back up secrets unless the remote is trusted.
-- The local backup repo. It is a plain Git directory on disk. Full-disk encryption is assumed.
-- The log file. `backup.log` is tracked, so anything the script logs goes to the remote. The script does not log file contents — only paths and status messages.
+- **The remote.** If my GitHub account is compromised, the attacker has everything in the backup. Do not treat a private repo as a vault.
+- **The local backup repo.** It's a plain Git directory. Full-disk encryption is assumed.
+- **The log file.** `backup.log` is tracked, so anything logged goes to the remote. The script logs paths and status, not file contents.
+- **Trash directories.** These are gitignored but present on disk. They contain deleted files, which could be sensitive.
 
-If you want to back up secrets, use `sops-nix` or `agenix` and commit *encrypted* files. The `gitleaks` scan will not flag them because they are ciphertext.
+If you want to back up secrets, use [`sops-nix`](https://github.com/Mic92/sops-nix) or [`agenix`](https://github.com/ryantm/agenix) and commit *encrypted* files. The gitleaks scan will not flag them, because they're ciphertext.
 
 ---
 
@@ -741,64 +737,60 @@ If you want to back up secrets, use `sops-nix` or `agenix` and commit *encrypted
 
 ### `flake '...' does not provide attribute 'nixosConfigurations.<host>'`
 
-The running `hostname` does not match the flake attribute. Verify:
+Your running `hostname` doesn't match the flake attribute. Check:
 
 ```fish
 hostname
 nix eval ~/.config/nixos#nixosConfigurations --apply builtins.attrNames
 ```
 
-If `hostname` prints something other than `nixos`, either:
+If they differ, either rebuild once with an explicit target:
 
-- Run with an explicit target: `sudo nixos-rebuild switch --flake ~/.config/nixos#nixos`
-- Or export `NIXBUILD_FLAKE_HOST=nixos` before running `rebuild-sync.fish`.
+```fish
+sudo nixos-rebuild switch --flake ~/.config/nixos#nixos
+```
 
-Once the rebuild succeeds with `networking.hostName = "nixos"`, the running hostname will match and the override becomes unnecessary.
+…or export the override for one run:
+
+```fish
+set -x NIXBUILD_FLAKE_HOST nixos
+~/.local/bin/rebuild-sync
+```
 
 ### `error: path '...' is not tracked by Git`
 
-A file referenced by the flake is not `git add`-ed. The script does this automatically, but if it fails (e.g. not a Git repo), stage manually:
+The flake references a file that isn't staged. The script does `git add .` in `~/.config/nixos` automatically, but if that failed (e.g. `~/.config/nixos` isn't a git repo), do it manually:
 
 ```fish
 git -C ~/.config/nixos add .
 ```
 
-### `nixos-rebuild: command not found` under `sudo`
+### `Permission denied (publickey)` when pushing
 
-`sudo` does not inherit your `PATH` by default. Either use the absolute path:
-
-```fish
-sudo /run/current-system/sw/bin/nixos-rebuild switch --flake ~/.config/nixos#nixos
-```
-
-Or add `nixos-rebuild` to `security.sudo.extraConfig`'s `secure_path`. The script itself does not do this — it calls `sudo nixos-rebuild` and relies on the standard NixOS `sudo` configuration, which works because NixOS installs `nixos-rebuild` into the system profile.
-
-### `gitleaks` reports a false positive
-
-Add an allowlist entry to `.gitleaks.toml` in the backup repo:
-
-```toml
-[allowlist]
-description = "False positives"
-regexes = [
-    '''EXAMPLE_KEY_[A-Z0-9]+''',
-]
-paths = [
-    '''backup\.log$''',
-]
-```
-
-Then re-run.
-
-### `gitleaks` errors with `unknown flag: --staged`
-
-Your gitleaks version predates the `git` subcommand's `--staged` flag. Either upgrade:
+Your SSH key isn't loaded or isn't on GitHub. Check:
 
 ```fish
-nix profile install nixpkgs#gitleaks
+ssh -T git@github.com
+ssh-add -l
 ```
 
-Or, if you must stay on an older version, change the invocation in the script to:
+If `ssh-add -l` prints "The agent has no identities", add your key:
+
+```fish
+ssh-add ~/.ssh/id_ed25519
+```
+
+If that says the key doesn't exist, generate one — see [Prerequisites step 4](#4-generate-an-ssh-key-and-add-it-to-github).
+
+### `unknown flag: --staged` from gitleaks
+
+Your gitleaks is older than the version that added `--staged` to the `git` subcommand. Either upgrade:
+
+```fish
+nix profile upgrade gitleaks
+```
+
+Or, in `local/bin/rebuild-sync`, change the gitleaks invocation to:
 
 ```fish
 gitleaks protect --staged --no-banner --redact --exit-code 1 --source $BACKUP_DIR
@@ -812,56 +804,49 @@ Check connectivity:
 git -C ~/.sysbackup ls-remote origin
 ```
 
-If it hangs, the remote is unreachable. The script will leave a `.push_pending` marker; resolve the network issue and re-run.
+If it hangs, the remote is unreachable. The script leaves a `.push_pending` marker; fix the network and run `rebuild-sync` again.
 
-If authentication is failing, verify your SSH key:
+### Rebase conflict during pull
 
-```fish
-ssh -T git@github.com   # or whatever your remote is
-```
-
-### Rebase conflict
-
-The script aborts the rebase automatically and exits. Resolve manually:
+The script aborts the rebase automatically. Resolve it by hand:
 
 ```fish
 cd ~/.sysbackup
 git status
-# Fix conflicts in the listed files
+# Fix conflicts, then:
 git add <fixed-files>
 git rebase --continue
 git push origin main
 ```
 
-The next `rebuild-sync.fish` run will then proceed normally.
+### The script says another instance is running
 
-### The `.lock` file is stuck
-
-It shouldn't be — flock releases on process exit. If you *know* no other instance is running and the script still refuses to start:
+`flock` releases on process exit, so this shouldn't happen. Verify with:
 
 ```fish
 fuser ~/.sysbackup/.lock
 ```
 
-If the output is empty, the file is not actually locked; the script should proceed. If it names a process, that process holds the lock.
+If nothing prints, the file isn't actually locked — retry. If a PID prints, that process is alive and holding the lock. Either wait or kill it.
 
-### `rsync` reports `code 24`
+### `rsync` exit code 24
 
-`rsync` exit code 24 means "some source files vanished during transfer" — usually a cache or temp file. The script treats this as a warning, not an error. It is safe to ignore.
+This is "some source files vanished during transfer". Usually a temp file. The script treats it as a warning, not an error. Safe to ignore.
 
-### A file I deleted from `~/.config/` still shows up in the backup
+### A file I deleted is still in the backup
 
-`--delete-after` deletes it from the destination on the *next* run, not immediately. Run `rebuild-sync.fish` once more.
+`--delete-after` removes it from the destination on the *next* run. Run `rebuild-sync` once more.
 
-### The backup log is enormous
+### The log file is enormous
 
-Prune it:
+Trim it:
 
 ```fish
 tail -n 5000 ~/.sysbackup/backup.log > /tmp/log
 mv /tmp/log ~/.sysbackup/backup.log
 git -C ~/.sysbackup add backup.log
 git -C ~/.sysbackup commit -m "chore: prune backup.log"
+git -C ~/.sysbackup push
 ```
 
 ---
@@ -869,26 +854,22 @@ git -C ~/.sysbackup commit -m "chore: prune backup.log"
 ## FAQ
 
 **Why not use Home Manager?**
+I have a strong preference for keeping things at one layer. Home Manager is a *second* configuration language alongside NixOS modules, and I'd rather have one. If you want Home Manager, you can add it as a flake input without disturbing anything else here.
 
-Home Manager is a fine choice, but it introduces a second configuration layer (user-level) that must stay in sync with the system layer. This configuration deliberately keeps everything at the system level, using plain files for dotfiles and NixOS modules for everything else. If you later want Home Manager, it slots in as a flake input without disturbing the existing structure.
+**Why a separate backup repo at all?**
+Because dotfiles change on a very different cadence than `configuration.nix`. Mixing them pollutes the flake's history with unrelated churn and makes reverting a config change messy. Two repos, two histories, one script to keep them in sync.
 
-**Why not `sops-nix` or `agenix` for secrets?**
-
-Because the backup deliberately contains no secrets. If you add a secret to the flake (e.g. a WiFi password), wrap it in sops-nix and commit the ciphertext. The `gitleaks` scan will pass because the file is encrypted.
-
-**Why does the script commit the flake's stage but not commit the flake itself?**
-
-Staging is required for `nixos-rebuild` to see new files. Committing is your decision — you might be mid-edit and not ready. The backup captures the flake's *working tree*, not its Git state.
+**Why two repos if I only push one to GitHub?**
+The flake at `~/.config/nixos` is *also* a git repo — I commit there manually when I want a checkpoint. But I don't push the flake's own history anywhere; instead, `rebuild-sync` rsyncs its *working tree* into the backup repo, stripping `.git/`. So the backup captures the *contents* of the flake but not its commit graph. That's a deliberate simplification — the backup's own history is enough.
 
 **Can I run this from a systemd timer?**
-
-Yes. Create a user timer:
+Yes:
 
 ```nix
 systemd.user.services.rebuild-sync = {
   description = "NixOS rebuild + backup sync";
   serviceConfig.Type = "oneshot";
-  serviceConfig.ExecStart = "%h/.local/bin/rebuild-sync.fish";
+  serviceConfig.ExecStart = "%h/.local/bin/rebuild-sync";
 };
 
 systemd.user.timers.rebuild-sync = {
@@ -898,43 +879,48 @@ systemd.user.timers.rebuild-sync = {
 };
 ```
 
-Note: `notify-send` will silently no-op in this context because there is no session bus, which is correct behaviour.
+`notify-send` will silently no-op in this context because there's no session bus, which is the correct behaviour.
 
-**Can I run it manually without rebuilding?**
-
-Not with the current script — the rebuild is unconditional. If you want a backup-only mode, add an environment check:
+**Can I back up without rebuilding?**
+The current script always rebuilds first. If you want a backup-only mode, guard the rebuild block with a variable check:
 
 ```fish
 if not set -q NIXBUILD_SKIP_REBUILD
-    # rebuild block
+    # rebuild block goes here
 end
 ```
 
-Then `set -x NIXBUILD_SKIP_REBUILD 1; rebuild-sync.fish` skips the rebuild.
+Then:
+
+```fish
+set -x NIXBUILD_SKIP_REBUILD 1
+~/.local/bin/rebuild-sync
+```
 
 **What happens if the machine dies mid-run?**
+`flock` is released automatically. Any files copied but not committed stay in the working tree; the next run re-rsyncs and picks up where it left off. Nothing is lost because `--delete-after` only runs after a successful transfer, and `--backup` preserves anything overwritten.
 
-Flock is released automatically. The backup repo will have partial state — files may have been copied but not committed. The next run will re-rsync and pick up where it left off. No data is lost because `--delete-after` only runs after successful transfer, and `--backup` preserves overwritten files.
-
-**What if I want to back up a path that does not exist yet?**
-
-The script skips missing sources with a `WARN` and continues. Add the path to the `syncs` list; it will start being backed up as soon as it exists.
+**What if I want to back up a path that doesn't exist yet?**
+The script skips missing sources with a warning. Add the path to the `syncs` list; it starts being backed up as soon as it exists.
 
 **How do I add a second machine?**
+Two options. (a) Duplicate the flake, change the hostname in `flake.nix` and `configuration.nix`, and point a second backup repo at a second GitHub remote. (b) Use branches on this repo — `main` for this machine, `laptop` for another, and set `BRANCH` in the script per-machine. The script assumes one host per invocation, so (b) requires changing the constant.
 
-Duplicate the flake, change `nixosConfigurations."<host>"` and `networking.hostName` to match the new machine, and add a second entry to the `syncs` list in the script (or use separate backup repos per machine). The current script assumes one host.
+**Why `Africa/Nairobi`?**
+Because that's where I am.
 
 ---
 
-## References
+## Links
 
 - [NixOS Manual](https://nixos.org/manual/nixos/stable/)
-- [Nix Flakes](https://nixos.wiki/wiki/Flakes)
+- [NixOS Wiki](https://wiki.nixos.org/) — the canonical reference for every `services.*`, `programs.*`, and `hardware.*` option used here.
+- [Nix Flakes](https://wiki.nixos.org/wiki/Flakes)
 - [Hyprland Wiki](https://wiki.hyprland.org/)
-- [CachyOS Kernel for Nix](https://github.com/xddxdd/nix-cachyos-kernel)
+- [nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel)
 - [gitleaks](https://github.com/gitleaks/gitleaks)
 - [rsync manual](https://download.samba.org/pub/rsync/rsync.1)
-- [Fish shell documentation](https://fishshell.com/docs/current/)
+- [Fish shell docs](https://fishshell.com/docs/current/)
 - [UWSM](https://github.com/Vladimir-csp/uwsm)
 - [nix-output-monitor](https://github.com/maralorn/nix-output-monitor)
 
@@ -942,10 +928,10 @@ Duplicate the flake, change `nixosConfigurations."<host>"` and `networking.hostN
 
 <div align="center">
 
-**Maintained by** `shadrack`
-**Hostname** `nixos`
-**Last reviewed** 2026-09-20
+**Maintained by** [@LadyHawk2006](https://github.com/LadyHawk2006)
+**Hostname** `nixos` · **User** `shadrack`
+**Repository** <https://github.com/LadyHawk2006/NixOS>
 
-<sub>This README is part of the flake repo and is itself rsynced into the backup, so it survives any restore.</sub>
+<sub>This README lives in the backup repo, so it survives any restore.</sub>
 
 </div>
