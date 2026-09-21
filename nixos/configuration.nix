@@ -218,9 +218,9 @@
     wineWow64Packages.wayland nix-output-monitor steam-run grimblast
 
     # -- GUI Applications & System Tools --
-    brave-origin bazaar gapless gdu ghostty glava google-chrome
+    bazaar gapless gdu ghostty glava google-chrome
     gpu-screen-recorder-gtk kdePackages.dolphin kdePackages.gwenview
-    kdePackages.kwallet kdePackages.partitionmanager localsend losslesscut-bin
+    kdePackages.kwallet kdePackages.partitionmanager localsend
     nautilus proton-vpn spotify valent waydroid-helper zed-editor
 
     # -- Development & Core Libraries --

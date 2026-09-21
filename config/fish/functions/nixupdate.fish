@@ -6,7 +6,7 @@ function nixupdate -d "Update NixOS flake inputs and trigger a sync rebuild"
     set_color normal
 
     # Update the flake.lock file
-    nix flake update --flake $flake_dir
+    sudo nix flake update --flake $flake_dir
 
     if test $status -ne 0
         set_color red

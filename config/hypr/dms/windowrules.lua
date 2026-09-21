@@ -64,11 +64,11 @@ hl.window_rule({ match = { class = "^com.dec05eba.gpu_screen_recorder$" }, float
 -- DMS-RULE: id=wr_1788787894830806569, name=.scrcpy-wrapped
 hl.window_rule({ match = { class = "^.scrcpy-wrapped$" }, float = true, size = { 439, 983 }, move = { 27, 70 } })
 
--- DMS-RULE: id=dms-floating-windows, name=DMS Floating Windows
-hl.window_rule({ match = { class = "^com.danklinux.dms$" }, float = true })
-
 -- DMS-RULE: id=wr_1789385011797467517, name=spotify
-hl.window_rule({ match = { class = "^spotify$" }, float = true, opacity = 0.95, size = { 800, 683 }, move = { 82, 114 } })
+hl.window_rule({ match = { class = "^spotify$" }, float = true, opacity = 0.9, size = { 800, 683 }, move = { 82, 114 } })
 
 -- DMS-RULE: id=wr_1789879545235021358, name=steam_app_244210
 hl.window_rule({ match = { class = "^steam_app_$" }, fullscreen = true, opaque = true })
+
+-- DMS-RULE: id=dms-floating-windows, name=DMS Floating Windows
+hl.window_rule({ match = { class = "^com.danklinux.dms$" }, float = true })
