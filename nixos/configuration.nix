@@ -185,6 +185,8 @@
   };
 
   services.xserver.xkb = { layout = "us"; variant = ""; };
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.login.enableGnomeKeyring = true;
 
   xdg.portal = {
     enable = true;
@@ -220,7 +222,7 @@
     # -- GUI Applications & System Tools --
     bazaar gapless gdu ghostty glava google-chrome
     gpu-screen-recorder-gtk kdePackages.dolphin kdePackages.gwenview
-    kdePackages.kwallet kdePackages.partitionmanager localsend
+    kdePackages.partitionmanager localsend
     nautilus proton-vpn spotify valent waydroid-helper zed-editor
 
     # -- Development & Core Libraries --
