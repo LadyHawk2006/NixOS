@@ -142,7 +142,7 @@
         "netbios name" = "nixos";
         "security" = "user";
       };
-    } // pkgs.lib.genAttrs [ "Videos" "Music" ] (folder: {
+    } // pkgs.lib.genAttrs [ "Videos" "Music" "Pictures" ] (folder: {
       "path" = "/home/shadrack/${folder}";
       "browseable" = "yes";
       "read only" = "yes";
