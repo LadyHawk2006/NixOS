@@ -6,9 +6,16 @@ hl.config({
 		gaps_out = 2,
 		border_size = 1,
 		resize_on_border = true,
+		layout = "master",
+	},
+	master = {
+		orientation = "left",
+		new_status = "slave",
+		new_on_top = false,
+		mfact = 0.5,
 	},
 	decoration = {
-		rounding = 12,
+		rounding = 14,
 	},
 })
 

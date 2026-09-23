@@ -220,7 +220,8 @@
 
     adwaita-icon-theme breeze-hacked-cursor-theme candy-icons hyprpolkitagent
     libsForQt5.qt5ct qt6Packages.qt6ct qt6.qtbase qt6.qtwayland qtengine
-    sweet-folders
+    sweet-folders kdePackages.qt5compat kdePackages.qtdeclarative
+
 
     (mpv.override {
       scripts = with mpvScripts; [
