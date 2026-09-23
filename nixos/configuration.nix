@@ -22,10 +22,10 @@
   hardware = {
     bluetooth.enable = true;
     xone.enable = true;
-    steam-hardware.enable = true; # Enables udev rules for controllers (Steam Controller, Xbox, PS5)
+    steam-hardware.enable = true;
     graphics = {
       enable = true;
-      enable32Bit = true; # Required for 32-bit games and Proton DirectX/Vulkan translation
+      enable32Bit = true;
       extraPackages = with pkgs; [
         intel-media-driver
         intel-vaapi-driver
@@ -121,7 +121,6 @@
   programs.dconf.enable = true;
   programs.fish.enable = true;
 
-  # -- Waydroid Virtualization --
   virtualisation.waydroid = {
     enable = true;
     package = pkgs.waydroid-nftables;
@@ -131,7 +130,6 @@
     services.waydroid-mount.wantedBy = [ "multi-user.target" ];
   };
 
-  # -- Local Network File Sharing (Samba) --
   services.samba = {
     enable = true;
     openFirewall = true;
@@ -159,25 +157,21 @@
       xwayland.enable = true;
     };
     uwsm.enable = true;
-    dms-shell = {
-      enable = true;
-      package = pkgs.dms-shell;
-    };
     gpu-screen-recorder.enable = true;
-    gamemode.enable = true; # Improves performance while playing games
+    gamemode.enable = true;
 
-    # Steam Module Configuration
     steam = {
       enable = true;
       remotePlay.openFirewall = true;
       dedicatedServer.openFirewall = true;
       localNetworkGameTransfers.openFirewall = true;
       extraCompatPackages = with pkgs; [
-        proton-ge-bin # Adds Proton-GE for improved game compatibility
+        proton-ge-bin
       ];
     };
   };
 
+  # System-level Greeter relying on the imported module in flake.nix
   services.displayManager.dms-greeter = {
     enable = true;
     compositor.name = "hyprland";
@@ -212,28 +206,22 @@
   # 8. System Packages
   # ============================================================================
   environment.systemPackages = with pkgs; [
-
-    # -- Utilities & CLI Tools --
     android-tools bat brightnessctl curl eza fastfetch ffmpeg-full
     ffmpegthumbnailer git libnotify nodejs playerctl python3 scrcpy
     usbutils uv vim wev wget wl-clipboard yt-dlp
     wineWow64Packages.wayland nix-output-monitor steam-run grimblast
 
-    # -- GUI Applications & System Tools --
     bazaar gapless gdu ghostty glava google-chrome
     gpu-screen-recorder-gtk kdePackages.dolphin kdePackages.gwenview
     kdePackages.partitionmanager localsend
     nautilus proton-vpn spotify valent waydroid-helper zed-editor
 
-    # -- Development & Core Libraries --
     nil nixd ocamlPackages.gstreamer gitleaks
 
-    # -- Desktop Environment & Theming Engines --
     adwaita-icon-theme breeze-hacked-cursor-theme candy-icons hyprpolkitagent
     libsForQt5.qt5ct qt6Packages.qt6ct qt6.qtbase qt6.qtwayland qtengine
     sweet-folders
 
-    # -- Customized Media Player --
     (mpv.override {
       scripts = with mpvScripts; [
         mpris sponsorblock quality-menu mpv-playlistmanager thumbfast
