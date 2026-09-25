@@ -89,5 +89,6 @@
     candy-icons
     hyprpolkitagent
     sweet-folders
+    quick-webapps
   ];
 }
