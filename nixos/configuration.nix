@@ -45,7 +45,14 @@
   services.blueman.enable = true;
 
   # ============================================================================
-  # 3. Bootloader & Kernel (CachyOS)
+  # 3. Performance Optimization (No Throttling)
+  # ============================================================================
+  zramSwap.enable = true;
+  services.fstrim.enable = true;
+  powerManagement.cpuFreqGovernor = "performance";
+
+  # ============================================================================
+  # 4. Bootloader & Kernel (CachyOS)
   # ============================================================================
   boot = {
     loader = {
@@ -62,7 +69,9 @@
       };
     };
 
-    kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
+    # Switched to the base 'latest' package to match the CI cache exactly
+#    kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
+   kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
     kernelModules = [ "xpad" "uinput" ];
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
@@ -70,8 +79,10 @@
     };
   };
 
+  services.scx.enable = true;
+
   # ============================================================================
-  # 4. Networking, Firewall & Tailscale
+  # 5. Networking, Firewall & Tailscale
   # ============================================================================
   networking = {
     hostName = "nixos";
@@ -81,20 +92,13 @@
       trustedInterfaces = [ "waydroid0" "tailscale0" ];
       allowedTCPPorts = [ 8080 53317 ];
       allowedUDPPorts = [ 8080 41641 53317 ];
-      allowedTCPPortRanges = [
-        { from = 1714; to = 1764; }
-        { from = 30000; to = 50000; }
-      ];
-      allowedUDPPortRanges = [
-        { from = 1714; to = 1764; }
-      ];
     };
   };
 
   services.tailscale.enable = true;
 
   # ============================================================================
-  # 5. Localization & User Configuration
+  # 6. Localization & User Configuration
   # ============================================================================
   time.timeZone = "Africa/Nairobi";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -103,12 +107,11 @@
     isNormalUser = true;
     description = "Shadrack";
     extraGroups = [ "networkmanager" "wheel" "input" "adbusers" ];
-    packages = with pkgs; [];
     shell = pkgs.fish;
   };
 
   # ============================================================================
-  # 6. Core Services, Virtualization & Network Storage
+  # 7. Core Services, Virtualization & Network Storage
   # ============================================================================
   security.polkit.enable = true;
   services.openssh.enable = true;
@@ -120,6 +123,11 @@
   programs.nix-ld.enable = true;
   programs.dconf.enable = true;
   programs.fish.enable = true;
+
+  programs.kdeconnect = {
+    enable = true;
+    package = pkgs.valent;
+  };
 
   virtualisation.waydroid = {
     enable = true;
@@ -149,7 +157,7 @@
   };
 
   # ============================================================================
-  # 7. Desktop Environment (Hyprland), Gaming & Display
+  # 8. Desktop Environment (Hyprland), Gaming & Display
   # ============================================================================
   programs = {
     hyprland = {
@@ -171,7 +179,6 @@
     };
   };
 
-  # System-level Greeter relying on the imported module in flake.nix
   services.displayManager.dms-greeter = {
     enable = true;
     compositor.name = "hyprland";
@@ -187,14 +194,6 @@
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
 
-  environment.sessionVariables = {
-    QT_QPA_PLATFORM = "wayland;xcb";
-    NIXOS_OZONE_WL = "1";
-    LIBVA_DRIVER_NAME = "iHD";
-  };
-
-  qt = { enable = true; platformTheme = "qt5ct"; };
-
   fonts.packages = with pkgs; [
     nerd-fonts.fira-code
     nerd-fonts.jetbrains-mono
@@ -203,30 +202,14 @@
   ];
 
   # ============================================================================
-  # 8. System Packages
+  # 9. Core System Packages
   # ============================================================================
   environment.systemPackages = with pkgs; [
-    android-tools bat brightnessctl curl eza fastfetch ffmpeg-full
-    ffmpegthumbnailer git libnotify nodejs playerctl python3 scrcpy
-    usbutils uv vim wev wget wl-clipboard yt-dlp
-    wineWow64Packages.wayland nix-output-monitor steam-run grimblast
+    android-tools brightnessctl curl ffmpeg-full ffmpegthumbnailer git
+    libnotify nodejs python3 usbutils uv wev wget wl-clipboard
+    wineWow64Packages.wayland nix-output-monitor steam-run waydroid-helper
 
-    bazaar gapless gdu ghostty glava google-chrome
-    gpu-screen-recorder-gtk kdePackages.dolphin kdePackages.gwenview
-    kdePackages.partitionmanager localsend
-    nautilus proton-vpn spotify valent waydroid-helper zed-editor
-
-    nil nixd ocamlPackages.gstreamer gitleaks
-
-    adwaita-icon-theme breeze-hacked-cursor-theme candy-icons hyprpolkitagent
-    libsForQt5.qt5ct qt6Packages.qt6ct qt6.qtbase qt6.qtwayland qtengine
-    sweet-folders kdePackages.qt5compat kdePackages.qtdeclarative
-
-
-    (mpv.override {
-      scripts = with mpvScripts; [
-        mpris sponsorblock quality-menu mpv-playlistmanager thumbfast
-      ];
-    })
+    qt6.qtbase qt6.qtwayland qtengine kdePackages.qt5compat
+    kdePackages.qtdeclarative libsForQt5.qt5ct qt6Packages.qt6ct
   ];
 }

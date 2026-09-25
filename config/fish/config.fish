@@ -1,2 +1,1 @@
-# Created by `pipx` on 2026-05-23 08:07:16
-set PATH $PATH /home/shadrack/.local/bin
+/nix/store/4imizgk2my0wzj3n8ikpwzqr9hk125yd-home-manager-files/.config/fish/config.fish
