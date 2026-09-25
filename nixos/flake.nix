@@ -12,7 +12,7 @@
     };
 
     # Add DankMaterialShell repository
-    dms.url = "github:AvengeMedia/DankMaterialShell";
+    dms.url = "github:AvengeMedia/DankMaterialShell/v1.6.2";
   };
 
   outputs = { self, nixpkgs, nix-cachyos-kernel, home-manager, dms, ... }@inputs: {
