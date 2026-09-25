@@ -4,9 +4,6 @@
 -- DMS-RULE: id=dms_rule_0, name=.*xdg-desktop-portal-gtk.*
 hl.window_rule({ match = { class = ".*xdg-desktop-portal-gtk.*" }, float = true, size = { 988, 822 }, move = { 810, 124 } })
 
--- DMS-RULE: id=dms_rule_3, name=
-hl.window_rule({ match = { class = ".*chrome-www.instagram.com__-Default.*" }, float = true })
-
 -- DMS-RULE: id=dms_rule_8, name=.*mpv.*
 hl.window_rule({ match = { class = ".*mpv.*" }, float = true, no_shadow = true, opacity = 1, size = { 1280, 720 }, move = { 322, 115 } })
 
@@ -31,17 +28,11 @@ hl.window_rule({ match = { class = "^Waydroid$" }, fullscreen = true })
 -- DMS-RULE: id=wr_1785573915573279595, name=com.dec05eba.gpu_screen_recorder
 hl.window_rule({ match = { class = "^com.dec05eba.gpu_screen_recorder$" }, float = true, opacity = 0.8, size = { 600, 800 }, move = { 1298, 100 } })
 
--- DMS-RULE: id=wr_1786087993646820963, name=chrome-gemini.google.com__app-Default
-hl.window_rule({ match = { class = "^chrome-gemini.google.com__app-Default$" }, float = true, opacity = 0.85, size = { 505, 836 }, move = { 1369, 92 } })
-
 -- DMS-RULE: id=wr_1786120553755476982, name=org.kde.gwenview
 hl.window_rule({ match = { class = "^org.kde.gwenview$" }, float = true, no_blur = true, size = { 1219, 755 }, move = { 363, 116 } })
 
 -- DMS-RULE: id=wr_1786819423153926720, name=space.f1nn.chorus
 hl.window_rule({ match = { class = "^space.f1nn.chorus$" }, float = true, opaque = true, size = { 660, 600 }, move = { 1113, 151 } })
-
--- DMS-RULE: id=wr_1786859113261185127, name=chrome-chat.deepseek.com__-Default
-hl.window_rule({ match = { class = "^chrome-chat.deepseek.com__-Default$" }, float = true, opacity = 0.9, size = { 503, 836 }, move = { 1370, 93 } })
 
 -- DMS-RULE: id=wr_1786984405863155935, name=chrome-music.youtube.com__-Default
 hl.window_rule({ match = { class = "^chrome-music.youtube.com__-Default$" }, opaque = true, size = { 800, 600 } })

@@ -49,7 +49,7 @@
   # ============================================================================
   zramSwap.enable = true;
   services.fstrim.enable = true;
-  powerManagement.cpuFreqGovernor = "performance";
+  services.power-profiles-daemon.enable = true;
 
   # ============================================================================
   # 4. Bootloader & Kernel (CachyOS)
