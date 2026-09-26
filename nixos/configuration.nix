@@ -43,13 +43,14 @@
   services.upower.enable = true;
   services.printing.enable = true;
   services.blueman.enable = true;
+  services.power-profiles-daemon.enable = true;
+
 
   # ============================================================================
   # 3. Performance Optimization (No Throttling)
   # ============================================================================
   zramSwap.enable = true;
   services.fstrim.enable = true;
-  services.power-profiles-daemon.enable = true;
 
   # ============================================================================
   # 4. Bootloader & Kernel (CachyOS)
