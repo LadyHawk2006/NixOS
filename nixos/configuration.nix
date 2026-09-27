@@ -71,7 +71,6 @@
     };
 
     # Switched to the base 'latest' package to match the CI cache exactly
-#    kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
    kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest-x86_64-v3;
     kernelModules = [ "xpad" "uinput" ];
     kernel.sysctl = {
@@ -209,7 +208,6 @@
     android-tools brightnessctl curl ffmpeg-full ffmpegthumbnailer git
     libnotify nodejs python3 usbutils uv wev wget wl-clipboard
     wineWow64Packages.wayland nix-output-monitor steam-run waydroid-helper
-
     qt6.qtbase qt6.qtwayland qtengine kdePackages.qt5compat
     kdePackages.qtdeclarative libsForQt5.qt5ct qt6Packages.qt6ct
   ];
