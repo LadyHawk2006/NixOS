@@ -58,6 +58,7 @@
     proton-vpn
     spotify
     zed-editor
+    telegram-desktop
 
     # Utilities & Media
     bat
