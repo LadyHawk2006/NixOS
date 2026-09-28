@@ -210,5 +210,6 @@
     wineWow64Packages.wayland nix-output-monitor steam-run waydroid-helper
     qt6.qtbase qt6.qtwayland qtengine kdePackages.qt5compat
     kdePackages.qtdeclarative libsForQt5.qt5ct qt6Packages.qt6ct
+    gnome-disk-utility
   ];
 }
